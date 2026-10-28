@@ -145,16 +145,16 @@
 </section>
 
 <!-- ==================== GALLERY FILTER BAR ==================== -->
-<section class="py-4 bg-white border-bottom shadow-xs sticky-top" style="top: 60px; z-index: 100;">
+<section class="py-3 bg-white border-bottom shadow-xs sticky-top" style="top: 60px; z-index: 100;">
     <div class="container">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
             <!-- Filter Pills -->
             <div class="d-flex flex-wrap align-items-center gap-2" id="galleryFilterGroup">
-                <button type="button" class="pub-filter-btn {% if selected_category == 'All' %}active{% endif %}" onclick="filterGallery('All', this)">
+                <button type="button" class="pub-filter-btn {% if selected_category == 'All' %}active{% endif %}" data-category-filter="All" onclick="filterGallery('All', this)">
                     <i class="bi bi-grid-fill"></i> All Moments
                 </button>
                 {% for cat in categories %}
-                    <button type="button" class="pub-filter-btn {% if selected_category == cat %}active{% endif %}" onclick="filterGallery('{{ cat }}', this)">
+                    <button type="button" class="pub-filter-btn {% if selected_category == cat %}active{% endif %}" data-category-filter="{{ cat }}" onclick="filterGallery('{{ cat }}', this)">
                         {% if cat == 'Campus Life' %}
                             <i class="bi bi-buildings"></i>
                         {% elif cat == 'Events & Fests' %}
@@ -175,10 +175,27 @@
                 {% endfor %}
             </div>
 
-            <!-- Photos Counter Badge -->
-            <div class="d-none d-md-flex align-items-center gap-2 text-muted small">
-                <i class="bi bi-images text-primary fs-5"></i>
-                <span>Showing <strong id="visiblePhotoCount" class="text-dark">{{ photos|length }}</strong> Photographs</span>
+            <!-- Instant Live Search & Sort Toolbar -->
+            <div class="d-flex align-items-center gap-2 flex-wrap ms-auto">
+                <!-- Search Box -->
+                <div class="input-group input-group-sm" style="max-width: 220px;">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="publicGallerySearch" class="form-control border-start-0" placeholder="Search title..." oninput="applyFiltersAndSort()">
+                </div>
+
+                <!-- Sort Dropdown -->
+                <select id="publicGallerySort" class="form-select form-select-sm" style="width: auto;" onchange="applyFiltersAndSort()">
+                    <option value="featured">Featured First</option>
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="views">Most Viewed</option>
+                    <option value="title">Title A-Z</option>
+                </select>
+
+                <!-- Photos Counter Badge -->
+                <div class="d-none d-lg-flex align-items-center gap-1.5 text-muted small ms-1">
+                    <span class="badge bg-light text-dark border px-2.5 py-1.5"><strong id="visiblePhotoCount">{{ photos|length }}</strong> photos</span>
+                </div>
             </div>
         </div>
     </div>
@@ -190,8 +207,8 @@
         {% if photos %}
             <div class="row g-4" id="galleryItemsContainer">
                 {% for p in photos %}
-                    <div class="col-sm-6 col-lg-4 gallery-item-col" data-id="{{ p.id }}" data-views="{{ p.views_count }}" data-category="{{ p.category }}" data-title="{{ p.title }}" data-desc="{{ p.description|default('', true) }}" data-img="{{ url_for('global_serve_uploads', filename='gallery/' + p.image_file) }}" data-date="{{ p.created_at.strftime('%d %b %Y') if p.created_at else '' }}">
-                        <div class="pub-gallery-card" onclick="openPublicLightbox({{ loop.index0 }})">
+                    <div class="col-sm-6 col-lg-4 gallery-item-col" data-id="{{ p.id }}" data-views="{{ p.views_count }}" data-category="{{ p.category }}" data-title="{{ p.title }}" data-desc="{{ p.description|default('', true) }}" data-img="{{ url_for('global_serve_uploads', filename='gallery/' + p.image_file) }}" data-date="{{ p.created_at.strftime('%d %b %Y') if p.created_at else '' }}" data-featured="{{ '1' if p.is_featured else '0' }}" data-timestamp="{{ p.created_at.timestamp() if p.created_at else 0 }}">
+                        <div class="pub-gallery-card" onclick="openPublicLightboxByElement(this)">
                             <img src="{{ url_for('global_serve_uploads', filename='gallery/' + p.image_file) }}" alt="{{ p.title }}" class="pub-gallery-img" loading="lazy">
                             
                             <div class="pub-gallery-overlay">
@@ -308,10 +325,16 @@
 </div>
 
 <script>
-    // Client-side instant category filtering & Lightbox browsing
+    // Client-side instant category filtering, search, sorting & Lightbox browsing
     let allPhotoCards = [];
     let visiblePhotoIndices = [];
     let currentModalIndex = 0;
+    let currentCategory = "{{ selected_category|default('All', true) }}";
+
+    function normalizeCategory(str) {
+        if (!str) return '';
+        return str.replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim().toLowerCase();
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
         const cards = document.querySelectorAll('.gallery-item-col');
@@ -323,29 +346,86 @@
             desc: card.getAttribute('data-desc'),
             img: card.getAttribute('data-img'),
             date: card.getAttribute('data-date'),
+            featured: parseInt(card.getAttribute('data-featured') || '0', 10),
+            timestamp: parseFloat(card.getAttribute('data-timestamp') || '0'),
             element: card
         }));
 
         visiblePhotoIndices = allPhotoCards.map((_, i) => i);
+
+        // Apply initial filter if category was requested in query string
+        if (currentCategory && currentCategory !== 'All') {
+            filterGallery(currentCategory);
+        } else {
+            applyFiltersAndSort();
+        }
     });
 
     function filterGallery(category, buttonEl) {
+        currentCategory = category || 'All';
+
         // Update active class on filter buttons
-        document.querySelectorAll('#galleryFilterGroup .pub-filter-btn').forEach(btn => btn.classList.remove('active'));
-        if (buttonEl) buttonEl.classList.add('active');
+        document.querySelectorAll('#galleryFilterGroup .pub-filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (normalizeCategory(btn.getAttribute('data-category-filter')) === normalizeCategory(currentCategory)) {
+                btn.classList.add('active');
+            }
+        });
+
+        applyFiltersAndSort();
+    }
+
+    function applyFiltersAndSort() {
+        const searchInput = document.getElementById('publicGallerySearch');
+        const searchVal = (searchInput ? searchInput.value : '').trim().toLowerCase();
+        const sortSelect = document.getElementById('publicGallerySort');
+        const sortVal = sortSelect ? sortSelect.value : 'featured';
+        const normTargetCategory = normalizeCategory(currentCategory);
 
         visiblePhotoIndices = [];
         let visibleCount = 0;
 
         allPhotoCards.forEach((photo, idx) => {
-            if (category === 'All' || photo.category === category) {
-                photo.element.style.display = 'block';
+            const matchesCat = (normTargetCategory === 'all' || normalizeCategory(photo.category) === normTargetCategory);
+            const matchesSearch = (!searchVal || 
+                (photo.title && photo.title.toLowerCase().includes(searchVal)) || 
+                (photo.desc && photo.desc.toLowerCase().includes(searchVal)) ||
+                (photo.category && photo.category.toLowerCase().includes(searchVal))
+            );
+
+            if (matchesCat && matchesSearch) {
+                photo.element.style.display = '';
                 visiblePhotoIndices.push(idx);
                 visibleCount++;
             } else {
                 photo.element.style.display = 'none';
             }
         });
+
+        // Re-order DOM elements if container exists
+        const container = document.getElementById('galleryItemsContainer');
+        if (container && allPhotoCards.length > 0) {
+            const sortedCards = [...allPhotoCards].sort((a, b) => {
+                if (sortVal === 'newest') {
+                    return b.timestamp - a.timestamp;
+                } else if (sortVal === 'oldest') {
+                    return a.timestamp - b.timestamp;
+                } else if (sortVal === 'views') {
+                    return b.views - a.views;
+                } else if (sortVal === 'title') {
+                    return (a.title || '').localeCompare(b.title || '');
+                } else { // 'featured'
+                    if (b.featured !== a.featured) {
+                        return b.featured - a.featured;
+                    }
+                    return b.timestamp - a.timestamp;
+                }
+            });
+
+            sortedCards.forEach(photo => {
+                container.appendChild(photo.element);
+            });
+        }
 
         // Update count badge
         const countBadge = document.getElementById('visiblePhotoCount');
@@ -359,7 +439,11 @@
     }
 
     function resetGalleryFilter() {
-        const allBtn = document.querySelector('#galleryFilterGroup .pub-filter-btn');
+        const searchInput = document.getElementById('publicGallerySearch');
+        if (searchInput) searchInput.value = '';
+        const sortSelect = document.getElementById('publicGallerySort');
+        if (sortSelect) sortSelect.value = 'featured';
+        const allBtn = document.querySelector('#galleryFilterGroup .pub-filter-btn[data-category-filter="All"]');
         filterGallery('All', allBtn);
     }
 
@@ -370,13 +454,24 @@
             .then(data => {
                 if (data.success && data.views_count !== undefined) {
                     photo.views = data.views_count;
-                    document.getElementById('modalPhotoViews').textContent = data.views_count;
+                    const viewsEl = document.getElementById('modalPhotoViews');
+                    if (viewsEl) viewsEl.textContent = data.views_count;
                     document.querySelectorAll('.photo-views-' + photo.id).forEach(el => {
                         el.textContent = data.views_count;
                     });
                 }
             })
             .catch(() => {});
+    }
+
+    function openPublicLightboxByElement(cardInnerEl) {
+        const colEl = cardInnerEl.closest('.gallery-item-col');
+        if (!colEl) return;
+        const photoId = colEl.getAttribute('data-id');
+        const photoIdx = allPhotoCards.findIndex(p => String(p.id) === String(photoId));
+        if (photoIdx !== -1) {
+            openPublicLightbox(photoIdx);
+        }
     }
 
     function openPublicLightbox(photoIdx) {
@@ -387,13 +482,16 @@
         modal.show();
 
         const actualIdx = visiblePhotoIndices[currentModalIndex];
-        recordPhotoView(allPhotoCards[actualIdx]);
+        if (actualIdx !== undefined && allPhotoCards[actualIdx]) {
+            recordPhotoView(allPhotoCards[actualIdx]);
+        }
     }
 
     function updateModalContent() {
         if (visiblePhotoIndices.length === 0) return;
         const actualIdx = visiblePhotoIndices[currentModalIndex];
         const photo = allPhotoCards[actualIdx];
+        if (!photo) return;
 
         document.getElementById('modalPhotoImage').src = photo.img;
         document.getElementById('modalPhotoTitle').textContent = photo.title;
@@ -410,7 +508,9 @@
         currentModalIndex = (currentModalIndex - 1 + visiblePhotoIndices.length) % visiblePhotoIndices.length;
         updateModalContent();
         const actualIdx = visiblePhotoIndices[currentModalIndex];
-        recordPhotoView(allPhotoCards[actualIdx]);
+        if (actualIdx !== undefined && allPhotoCards[actualIdx]) {
+            recordPhotoView(allPhotoCards[actualIdx]);
+        }
     }
 
     function nextPhoto() {
@@ -418,7 +518,9 @@
         currentModalIndex = (currentModalIndex + 1) % visiblePhotoIndices.length;
         updateModalContent();
         const actualIdx = visiblePhotoIndices[currentModalIndex];
-        recordPhotoView(allPhotoCards[actualIdx]);
+        if (actualIdx !== undefined && allPhotoCards[actualIdx]) {
+            recordPhotoView(allPhotoCards[actualIdx]);
+        }
     }
 
     // Keyboard arrow keys navigation for Lightbox
