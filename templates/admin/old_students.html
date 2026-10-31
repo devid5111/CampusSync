@@ -334,27 +334,27 @@
     <!-- Marks Preview Modal -->
     <div class="modal fade" id="marksPreviewModal" tabindex="-1" aria-labelledby="marksPreviewModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-dark text-white">
-                    <div>
-                        <h5 class="modal-title fw-bold" id="marksPreviewModalLabel">
-                            <i class="bi bi-journal-bookmark-fill me-2"></i>Historical Semester Marks
-                        </h5>
-                        <small id="modalStudentSubtitle" class="text-white-50"></small>
+            <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+                <div class="modal-header bg-dark text-white py-2.5 px-3">
+                    <div style="min-width: 0;" class="pe-2">
+                        <h6 class="modal-title fw-bold mb-0 text-truncate" id="marksPreviewModalLabel" style="font-size: 1.05rem;">
+                            <i class="bi bi-journal-bookmark-fill me-1.5 text-warning"></i>Historical Semester Marks
+                        </h6>
+                        <small id="modalStudentSubtitle" class="text-white-50 fs-8 text-truncate d-block"></small>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-4" id="modalMarksContent">
+                <div class="modal-body p-3 p-md-4" id="modalMarksContent">
                     <div class="text-center py-5">
                         <div class="spinner-border text-primary" role="status"></div>
                         <p class="text-muted small mt-2">Loading marks from archive tables...</p>
                     </div>
                 </div>
-                <div class="modal-footer bg-light">
-                    <a id="btnModalDownloadPdf" href="#" class="btn btn-danger btn-sm">
+                <div class="modal-footer bg-light p-2.5 d-flex flex-column flex-sm-row justify-content-between gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm order-2 order-sm-1 w-100 w-sm-auto" data-bs-dismiss="modal">Close</button>
+                    <a id="btnModalDownloadPdf" href="#" class="btn btn-danger btn-sm order-1 order-sm-2 w-100 w-sm-auto fw-semibold">
                         <i class="bi bi-file-earmark-pdf-fill me-1"></i> Download Consolidated PDF
                     </a>
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -399,57 +399,68 @@
                     }
 
                     let html = `
-                        <div class="d-flex justify-content-between align-items-center bg-light p-3 rounded mb-3 border">
-                            <div>
-                                <span class="text-muted small">Total Marks:</span>
-                                <strong class="text-primary ms-1">${summary.total_obtained} / ${summary.total_max}</strong>
+                        <!-- Responsive Cumulative Metric Header -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-6 col-sm-4">
+                                <div class="p-2.5 bg-light rounded-3 border text-center h-100 d-flex flex-column justify-content-center">
+                                    <div class="text-muted fs-8 fw-semibold mb-0.5">Total Marks</div>
+                                    <div class="text-primary font-monospace fw-bold fs-7">${summary.total_obtained} <span class="text-muted fs-8 font-sans">/ ${summary.total_max}</span></div>
+                                </div>
                             </div>
-                            <div>
-                                <span class="text-muted small">Overall Percentage:</span>
-                                <strong class="text-info ms-1">${summary.overall_percentage}%</strong>
+                            <div class="col-6 col-sm-4">
+                                <div class="p-2.5 bg-light rounded-3 border text-center h-100 d-flex flex-column justify-content-center">
+                                    <div class="text-muted fs-8 fw-semibold mb-0.5">Overall %</div>
+                                    <div class="text-info font-monospace fw-bold fs-7">${summary.overall_percentage}%</div>
+                                </div>
                             </div>
-                            <div>
-                                <span class="text-muted small">Division:</span>
-                                <span class="badge bg-success ms-1">${summary.class}</span>
+                            <div class="col-12 col-sm-4">
+                                <div class="p-2.5 bg-light rounded-3 border text-center h-100 d-flex flex-column justify-content-center">
+                                    <div class="text-muted fs-8 fw-semibold mb-0.5">Awarded Division</div>
+                                    <span class="badge bg-success text-wrap fs-8 fw-semibold px-2 py-1 mx-auto" style="line-height: 1.25; max-width: 100%;">${summary.class}</span>
+                                </div>
                             </div>
                         </div>
                     `;
 
                     for (const [semNum, semInfo] of Object.entries(semesters)) {
                         html += `
-                            <div class="card mb-3 border border-light-subtle">
-                                <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
-                                    <strong class="text-primary"><i class="bi bi-bookmark me-1"></i> Semester ${semNum} (${semInfo.academic_year || '-'})</strong>
-                                    <div>
-                                        <span class="badge bg-light text-dark border me-2">Total: ${semInfo.total_obtained}/${semInfo.total_max} (${semInfo.percentage}%)</span>
-                                        <a href="/admin/old-students/student/${studentId}/pdf?semester=${semNum}" class="btn btn-outline-danger btn-xs py-0 px-2" style="font-size:0.75rem;">
-                                            <i class="bi bi-file-pdf"></i> Sem ${semNum} PDF
+                            <div class="card mb-3 border border-light-subtle rounded-3 overflow-hidden shadow-xs">
+                                <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center py-2 px-3 gap-2 border-bottom">
+                                    <div class="fw-bold text-primary fs-7">
+                                        <i class="bi bi-bookmark-fill me-1"></i> Semester ${semNum} <span class="text-muted fs-8">(${semInfo.academic_year || '-'})</span>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                                        <span class="badge bg-light text-dark border font-monospace fs-8">Total: ${semInfo.total_obtained}/${semInfo.total_max} (${semInfo.percentage}%)</span>
+                                        <a href="/admin/old-students/student/${studentId}/pdf?semester=${semNum}" class="btn btn-outline-danger btn-xs py-1 px-2 fw-semibold fs-8">
+                                            <i class="bi bi-file-earmark-pdf"></i> Sem ${semNum} PDF
                                         </a>
                                     </div>
                                 </div>
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-striped mb-0 small">
-                                        <thead>
+
+                                <!-- Desktop Table View (>= 576px) -->
+                                <div class="table-responsive d-none d-sm-block" style="-webkit-overflow-scrolling: touch;">
+                                    <table class="table table-sm table-hover mb-0 small align-middle" style="min-width: 480px;">
+                                        <thead class="table-light">
                                             <tr>
-                                                <th>Code</th>
+                                                <th style="width: 100px;">Code</th>
                                                 <th>Subject Name</th>
-                                                <th class="text-center">Marks Obtained</th>
-                                                <th class="text-center">Max</th>
-                                                <th class="text-center">Status</th>
+                                                <th class="text-center" style="width: 110px;">Marks</th>
+                                                <th class="text-center" style="width: 70px;">Max</th>
+                                                <th class="text-center" style="width: 80px;">Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                         `;
 
                         semInfo.subjects.forEach(sub => {
-                            const badgeClass = sub.status === 'PASS' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger';
+                            const badgeClass = sub.status === 'PASS' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle';
                             html += `
                                 <tr>
-                                    <td><code>${sub.subject_code}</code></td>
-                                    <td>${sub.subject_name}</td>
-                                    <td class="text-center fw-bold text-primary">${sub.marks_obtained}</td>
+                                    <td><span class="badge bg-dark font-monospace fs-8">${sub.subject_code}</span></td>
+                                    <td class="fw-semibold text-dark">${sub.subject_name}</td>
+                                    <td class="text-center fw-bold text-primary font-monospace">${sub.marks_obtained}</td>
                                     <td class="text-center text-muted">${sub.max_marks}</td>
-                                    <td class="text-center"><span class="badge ${badgeClass}">${sub.status}</span></td>
+                                    <td class="text-center"><span class="badge ${badgeClass} fs-8">${sub.status}</span></td>
                                 </tr>
                             `;
                         });
@@ -457,6 +468,30 @@
                         html += `
                                         </tbody>
                                     </table>
+                                </div>
+
+                                <!-- Mobile List View (< 576px) -->
+                                <div class="d-sm-none p-2 bg-light-subtle">
+                        `;
+
+                        semInfo.subjects.forEach(sub => {
+                            const badgeClass = sub.status === 'PASS' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle';
+                            html += `
+                                <div class="p-2.5 bg-white rounded-3 border mb-2 shadow-xs">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="badge bg-dark font-monospace fs-8">${sub.subject_code}</span>
+                                        <span class="badge ${badgeClass} fs-8">${sub.status}</span>
+                                    </div>
+                                    <div class="fw-bold text-dark fs-8 mb-1.5" style="line-height: 1.3;">${sub.subject_name}</div>
+                                    <div class="d-flex justify-content-between align-items-center pt-1.5 border-top text-muted fs-8 font-monospace">
+                                        <span>Score: <strong class="text-primary fs-7">${sub.marks_obtained}</strong> / ${sub.max_marks}</span>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold fs-8">${sub.percentage}%</span>
+                                    </div>
+                                </div>
+                            `;
+                        });
+
+                        html += `
                                 </div>
                             </div>
                         `;
