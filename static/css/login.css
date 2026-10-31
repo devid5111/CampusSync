@@ -547,6 +547,37 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+   9. LOGIN FORM VALIDATION CLEANUP
+   Remove Bootstrap valid checkmarks (✔) and green borders from login fields.
+   -------------------------------------------------------------------------- */
+.login-card .form-control:valid,
+.login-card .was-validated .form-control:valid,
+.login-card .form-control.is-valid,
+.login-card .was-validated .form-control.is-valid {
+  border-color: var(--input-border) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.login-card .form-control:invalid,
+.login-card .was-validated .form-control:invalid,
+.login-card .form-control.is-invalid,
+.login-card .was-validated .form-control.is-invalid {
+  border-color: #dc3545 !important;
+  background-image: none !important;
+}
+
+.login-card .input-group:focus-within .form-control {
+  border-color: var(--primary-color) !important;
+}
+
+.login-card input[type="password"],
+.login-card input[name="password"],
+.login-card .btn-toggle-password {
+  background-image: none !important;
+}
+
+/* --------------------------------------------------------------------------
    8. RESPONSIVE BREAKPOINTS (MOBILE & TABLET)
    -------------------------------------------------------------------------- */
 @media (max-width: 991.98px) {

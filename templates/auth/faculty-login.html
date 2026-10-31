@@ -139,6 +139,12 @@
               {% endif %}
             {% endwith %}
 
+                        <!-- Dynamic Client-side Error Alert Banner -->
+            <div id="clientErrorAlert" class="alert alert-danger d-flex align-items-center mb-3 d-none" role="alert">
+              <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+              <div id="clientErrorMessage"></div>
+            </div>
+
             <!-- Error Alert Banner -->
             {% if error %}
             <div class="alert alert-danger d-flex align-items-center mb-3" role="alert">
@@ -156,23 +162,23 @@
             {% endif %}
 
             <!-- Login Form -->
-            <form id="facultyLoginForm" action="{{ url_for('faculty_login') }}" method="POST" class="needs-validation" novalidate>
+            <form id="facultyLoginForm" action="{{ url_for('faculty_login') }}" method="POST">
               
-              <!-- Email Input -->
+              <!-- Email / Faculty Code Input -->
               <div class="mb-3">
-                <label for="facultyEmail" class="form-label">Email Address</label>
+                <label for="facultyEmail" class="form-label">Email Address / Faculty Code</label>
                 <div class="input-group">
                   <span class="input-group-text">
-                    <i class="bi bi-envelope-fill"></i>
+                    <i class="bi bi-person-badge"></i>
                   </span>
                   <input 
-                    type="email" 
+                    type="text" 
                     class="form-control" 
                     id="facultyEmail" 
                     name="email" 
-                    placeholder="Enter your registered email" 
+                    placeholder="Enter registered email or faculty code" 
                     required 
-                    autocomplete="email"
+                    autocomplete="username"
                   >
                 </div>
               </div>

@@ -118,6 +118,12 @@
               <p class="login-subtitle">Sign in using your student email address.</p>
             </div>
 
+            <!-- Dynamic Inline Error Alert Banner -->
+            <div id="studentInlineError" class="alert alert-danger d-flex align-items-center mb-3 d-none" role="alert">
+              <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+              <div id="studentInlineErrorMsg"></div>
+            </div>
+
             <!-- Error Alert Banner -->
             {% if error %}
             <div class="alert alert-danger d-flex align-items-center mb-3" role="alert">
@@ -135,26 +141,26 @@
             {% endif %}
 
             <!-- Student Login Form -->
-            <form id="studentLoginForm" action="{{ url_for('student_login') }}" method="POST" class="needs-validation" novalidate>
+            <form id="studentLoginForm" action="{{ url_for('student_login') }}" method="POST">
               <input type="hidden" name="device_fingerprint" id="deviceFingerprintInput">
               <input type="hidden" name="device_model" id="deviceModelInput">
               <input type="hidden" name="skip_binding_confirmed" id="skipBindingConfirmed" value="0">
               
               <!-- Student Email Input -->
               <div class="mb-3">
-                <label for="studentEmail" class="form-label">Student Email Address</label>
+                <label for="studentEmail" class="form-label">Student Email / Enrollment No</label>
                 <div class="input-group">
                   <span class="input-group-text">
-                    <i class="bi bi-envelope-fill"></i>
+                    <i class="bi bi-person-badge"></i>
                   </span>
                   <input 
-                    type="email" 
+                    type="text" 
                     class="form-control" 
                     id="studentEmail" 
                     name="email" 
-                    placeholder="student@college.edu" 
+                    placeholder="student@college.edu or Enrollment No" 
                     required 
-                    autocomplete="email"
+                    autocomplete="username"
                     autofocus
                   >
                 </div>
@@ -506,13 +512,28 @@
     if (loginForm) {
         loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            if (!loginForm.checkValidity()) {
-                loginForm.classList.add('was-validated');
+            const inlineAlert = document.getElementById('studentInlineError');
+            const inlineAlertMsg = document.getElementById('studentInlineErrorMsg');
+            if (inlineAlert) inlineAlert.classList.add('d-none');
+
+            const emailInput = document.getElementById('studentEmail');
+            const passwordInput = document.getElementById('studentPassword');
+            const email = emailInput ? emailInput.value.trim() : '';
+            const password = passwordInput ? passwordInput.value : '';
+
+            if (emailInput) emailInput.classList.remove('is-invalid');
+            if (passwordInput) passwordInput.classList.remove('is-invalid');
+
+            if (!email || !password) {
+                if (!email && emailInput) emailInput.classList.add('is-invalid');
+                if (!password && passwordInput) passwordInput.classList.add('is-invalid');
+                if (inlineAlert && inlineAlertMsg) {
+                    inlineAlertMsg.textContent = "Please enter both your Student Email / Enrollment No and Password.";
+                    inlineAlert.classList.remove('d-none');
+                }
                 return;
             }
 
-            const email = document.getElementById('studentEmail').value.trim();
-            const password = document.getElementById('studentPassword').value;
             const deviceFp = getDeviceFingerprint();
             const deviceModel = getDeviceModel();
 
@@ -554,10 +575,14 @@
                         openWebauthnSetupModal(data);
                     }
                 } else {
-                    // Show error popup modal
-                    document.getElementById('loginErrorMessage').textContent = data.message || "Invalid email or password.";
-                    const errModal = new bootstrap.Modal(document.getElementById('loginErrorModal'));
-                    errModal.show();
+                    // Show inline error alert banner (just like Admin Login!)
+                    if (inlineAlert && inlineAlertMsg) {
+                        inlineAlertMsg.textContent = data.message || "Invalid Email or Password.";
+                        inlineAlert.classList.remove('d-none');
+                        inlineAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                    if (emailInput) emailInput.classList.add('is-invalid');
+                    if (passwordInput) passwordInput.classList.add('is-invalid');
                 }
             } catch (err) {
                 console.error("Fetch login error, submitting via standard POST fallback:", err);

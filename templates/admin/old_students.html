@@ -18,12 +18,23 @@
             padding: 16px 20px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.03);
         }
-        .old-students-table {
+        .old-students-card {
             background: #ffffff;
             border-radius: 12px;
             border: 1px solid #e2e8f0;
-            overflow: hidden;
             box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+            overflow: hidden;
+        }
+        .old-students-table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+        }
+        .old-students-table {
+            min-width: 880px;
+            margin-bottom: 0;
+            background: #ffffff;
         }
         .old-students-table thead th {
             background: #f8fafc;
@@ -34,12 +45,34 @@
             font-weight: 700;
             border-bottom: 1px solid #e2e8f0;
             padding: 12px 14px;
+            white-space: nowrap;
         }
         .old-students-table tbody td {
             padding: 12px 14px;
             vertical-align: middle;
             font-size: 0.875rem;
             border-bottom: 1px solid #f1f5f9;
+        }
+        @media (max-width: 1200px) {
+            .old-students-table th.sticky-action-col,
+            .old-students-table td.sticky-action-col {
+                position: sticky;
+                right: 0;
+                background: #ffffff;
+                box-shadow: -6px 0 10px -2px rgba(15, 23, 42, 0.08);
+                z-index: 2;
+            }
+            .old-students-table th.sticky-action-col {
+                background: #f8fafc;
+            }
+        }
+        .old-student-mobile-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
         }
     </style>
 </head>
@@ -152,89 +185,146 @@
                     </form>
                 </div>
 
-                <!-- Old Students Directory Table -->
-                <div class="table-responsive old-students-table mb-4">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th style="width: 50px;" class="text-center">Sr</th>
-                                <th style="width: 80px;" class="text-center">Roll No</th>
-                                <th style="width: 140px;">Enrollment No</th>
-                                <th>Student Full Name</th>
-                                <th>Contact Information</th>
-                                <th style="width: 90px;" class="text-center">Course</th>
-                                <th style="width: 100px;" class="text-center">Passing Year</th>
-                                <th style="width: 110px;" class="text-center">Archived Date</th>
-                                <th style="width: 150px;" class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if students %}
-                                {% for st in students %}
-                                    <tr>
-                                        <td class="text-center text-muted fw-bold">{{ loop.index }}</td>
-                                        <td class="text-center fw-bold">{{ st.roll_number }}</td>
-                                        <td>
-                                            <span class="badge bg-light text-dark border font-monospace">{{ st.enrollment_no }}</span>
-                                        </td>
-                                        <td>
-                                            <div class="fw-semibold text-dark">{{ st.full_name }}</div>
-                                            <small class="text-muted">Final: Semester {{ st.final_semester }}</small>
-                                        </td>
-                                        <td>
-                                            <div class="small text-truncate" style="max-width: 220px;" title="{{ st.email }}">
-                                                <i class="bi bi-envelope text-muted me-1"></i>{{ st.email }}
-                                            </div>
-                                            {% if st.mobile %}
-                                                <div class="small text-muted">
-                                                    <i class="bi bi-telephone text-muted me-1"></i>{{ st.mobile }}
+                <!-- Mobile Card View (< 768px) -->
+                <div class="d-md-none mb-4">
+                    {% if students %}
+                        {% for st in students %}
+                            <div class="old-student-mobile-card shadow-xs">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                                        <span class="badge bg-primary px-2 py-1 fs-8">Roll #{{ st.roll_number }}</span>
+                                        <span class="badge bg-light text-dark border font-monospace fs-8">{{ st.enrollment_no }}</span>
+                                    </div>
+                                    <span class="badge bg-secondary-subtle text-secondary fw-semibold fs-8">{{ st.academic_year or 'Alumni' }}</span>
+                                </div>
+                                <h6 class="fw-bold mb-1 text-dark">{{ st.full_name }}</h6>
+                                <div class="small text-muted mb-3">
+                                    <div><i class="bi bi-envelope text-muted me-1"></i>{{ st.email }}</div>
+                                    {% if st.mobile %}<div><i class="bi bi-telephone text-muted me-1"></i>{{ st.mobile }}</div>{% endif %}
+                                    <div class="mt-1">
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-8">
+                                            {{ st.course or 'BCA' }} &bull; Final Sem {{ st.final_semester }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                    <span class="text-muted fs-8">
+                                        <i class="bi bi-calendar-check me-1"></i>{{ st.archived_at.strftime('%d-%b-%Y') if st.archived_at else 'Archived' }}
+                                    </span>
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-primary btn-sm px-2 fw-semibold" 
+                                                onclick="viewOldStudentMarks({{ st.id }}, '{{ st.full_name }}', '{{ st.enrollment_no }}')"
+                                                title="View Historical Semester Marks">
+                                            <i class="bi bi-eye"></i> Marks
+                                        </button>
+                                        <a href="{{ url_for('admin.admin_old_student_pdf', student_id=st.id) }}" 
+                                           class="btn btn-outline-danger btn-sm px-2 fw-semibold" 
+                                           title="Download Marksheet PDF">
+                                            <i class="bi bi-file-earmark-pdf"></i> PDF
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="card p-4 text-center text-muted">
+                            <i class="bi bi-mortarboard fs-1 text-secondary d-block mb-2"></i>
+                            <h6 class="fw-bold">No Archived Students Found</h6>
+                            <p class="small mb-0">No old students match your filter criteria.</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Desktop / Tablet Table View (>= 768px) with Sticky Actions & Smooth Scroll -->
+                <div class="d-none d-md-block old-students-card mb-4">
+                    <!-- Tablet Horizontal Scroll Indicator Hint -->
+                    <div class="d-xl-none bg-light border-bottom px-3 py-2 text-muted small d-flex align-items-center justify-content-between">
+                        <span class="fs-8"><i class="bi bi-arrow-left-right text-primary me-1"></i> Swipe horizontally to view full details (Actions are pinned)</span>
+                        <span class="badge bg-primary-subtle text-primary fs-8">Scrollable</span>
+                    </div>
+                    <div class="old-students-table-responsive">
+                        <table class="table table-hover align-middle old-students-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;" class="text-center">Sr</th>
+                                    <th style="width: 80px;" class="text-center">Roll No</th>
+                                    <th style="width: 140px;">Enrollment No</th>
+                                    <th>Student Full Name</th>
+                                    <th>Contact Information</th>
+                                    <th style="width: 90px;" class="text-center">Course</th>
+                                    <th style="width: 100px;" class="text-center">Passing Year</th>
+                                    <th style="width: 110px;" class="text-center">Archived Date</th>
+                                    <th style="width: 150px;" class="text-center sticky-action-col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if students %}
+                                    {% for st in students %}
+                                        <tr>
+                                            <td class="text-center text-muted fw-bold">{{ loop.index }}</td>
+                                            <td class="text-center fw-bold">{{ st.roll_number }}</td>
+                                            <td>
+                                                <span class="badge bg-light text-dark border font-monospace">{{ st.enrollment_no }}</span>
+                                            </td>
+                                            <td>
+                                                <div class="fw-semibold text-dark">{{ st.full_name }}</div>
+                                                <small class="text-muted">Final: Semester {{ st.final_semester }}</small>
+                                            </td>
+                                            <td>
+                                                <div class="small text-truncate" style="max-width: 220px;" title="{{ st.email }}">
+                                                    <i class="bi bi-envelope text-muted me-1"></i>{{ st.email }}
                                                 </div>
-                                            {% endif %}
-                                        </td>
-                                        <td class="text-center">
-                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
-                                                {{ st.course or 'BCA' }}
-                                            </span>
-                                        </td>
-                                        <td class="text-center fw-semibold text-secondary">
-                                            {{ st.academic_year or '-' }}
-                                        </td>
-                                        <td class="text-center text-muted small">
-                                            {{ st.archived_at.strftime('%d-%b-%Y') if st.archived_at else '-' }}
-                                        </td>
-                                        <td class="text-center">
-                                            <div class="btn-group btn-group-sm">
-                                                <button type="button" class="btn btn-outline-primary" 
-                                                        onclick="viewOldStudentMarks({{ st.id }}, '{{ st.full_name }}', '{{ st.enrollment_no }}')"
-                                                        title="View Historical Semester Marks">
-                                                    <i class="bi bi-eye"></i> Marks
-                                                </button>
-                                                <a href="{{ url_for('admin.admin_old_student_pdf', student_id=st.id) }}" 
-                                                   class="btn btn-outline-danger" 
-                                                   title="Download Marksheet PDF">
-                                                    <i class="bi bi-file-earmark-pdf"></i>
-                                                </a>
-                                            </div>
+                                                {% if st.mobile %}
+                                                    <div class="small text-muted">
+                                                        <i class="bi bi-telephone text-muted me-1"></i>{{ st.mobile }}
+                                                    </div>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                                    {{ st.course or 'BCA' }}
+                                                </span>
+                                            </td>
+                                            <td class="text-center fw-semibold text-secondary">
+                                                {{ st.academic_year or '-' }}
+                                            </td>
+                                            <td class="text-center text-muted small">
+                                                {{ st.archived_at.strftime('%d-%b-%Y') if st.archived_at else '-' }}
+                                            </td>
+                                            <td class="text-center sticky-action-col">
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-primary" 
+                                                            onclick="viewOldStudentMarks({{ st.id }}, '{{ st.full_name }}', '{{ st.enrollment_no }}')"
+                                                            title="View Historical Semester Marks">
+                                                        <i class="bi bi-eye"></i> Marks
+                                                    </button>
+                                                    <a href="{{ url_for('admin.admin_old_student_pdf', student_id=st.id) }}" 
+                                                       class="btn btn-outline-danger" 
+                                                       title="Download Marksheet PDF">
+                                                        <i class="bi bi-file-earmark-pdf"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="9" class="text-center py-5 text-muted">
+                                            <i class="bi bi-mortarboard fs-1 text-secondary d-block mb-2"></i>
+                                            <h6 class="fw-bold">No Archived Students Found</h6>
+                                            <p class="small mb-0">
+                                                {% if search_query or selected_year != 'All' %}
+                                                    No old students match your filter criteria. Try resetting filters.
+                                                {% else %}
+                                                    Graduated Semester 6 students will appear here automatically when academic year rollover or graduation archiving is executed.
+                                                {% endif %}
+                                            </p>
                                         </td>
                                     </tr>
-                                {% endfor %}
-                            {% else %}
-                                <tr>
-                                    <td colspan="9" class="text-center py-5 text-muted">
-                                        <i class="bi bi-mortarboard fs-1 text-secondary d-block mb-2"></i>
-                                        <h6 class="fw-bold">No Archived Students Found</h6>
-                                        <p class="small mb-0">
-                                            {% if search_query or selected_year != 'All' %}
-                                                No old students match your filter criteria. Try resetting filters.
-                                            {% else %}
-                                                Graduated Semester 6 students will appear here automatically when academic year rollover or graduation archiving is executed.
-                                            {% endif %}
-                                        </p>
-                                    </td>
-                                </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
             </div>

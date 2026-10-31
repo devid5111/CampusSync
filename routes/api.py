@@ -564,7 +564,7 @@ def api_admin_get_students():
         if semester:
             query = query.filter_by(semester=semester)
 
-        all_students = query.order_by(Student.roll_number.asc()).all()
+        all_students = query.order_by(db.cast(Student.roll_number, db.Integer).asc()).all()
         result = []
         for s in all_students:
             if search:

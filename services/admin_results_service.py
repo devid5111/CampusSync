@@ -239,7 +239,7 @@ def get_admin_class_results_matrix(semester=1, division="A", academic_year="2026
         Student.semester == sem,
         Student.division == division,
         Student.status == 'Active'
-    ).order_by(Student.roll_number.asc(), Student.full_name.asc()).all()
+    ).order_by(db.cast(Student.roll_number, db.Integer).asc(), Student.full_name.asc()).all()
 
     # Fetch active subjects for this semester
     subjects = Subject.query.filter_by(

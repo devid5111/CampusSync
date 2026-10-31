@@ -55,7 +55,7 @@
             border-radius: 14px;
             border: 1px solid #e2e8f0;
             background: #ffffff;
-            overflow: hidden;
+            overflow-x: auto;
         }
         .table thead th {
             background: #f8fafc;
@@ -82,6 +82,24 @@
             background: #fef2f2;
             color: #991b1b;
             border: 1px solid #fecaca;
+        }
+    
+        /* Device Management Responsive & Sticky Actions */
+        @media (max-width: 991.98px) {
+            #deviceTable th.sticky-action-col,
+            #deviceTable td.sticky-action-col {
+                position: sticky;
+                right: 0;
+                background: #ffffff;
+                box-shadow: -6px 0 10px -2px rgba(15, 23, 42, 0.08);
+                z-index: 2;
+            }
+            #deviceTable th.sticky-action-col {
+                background: #f8fafc;
+            }
+        }
+        #deviceTable {
+            min-width: 760px;
         }
     </style>
 </head>
@@ -237,18 +255,24 @@
                 </div>
 
                 <!-- Students Live Data Table -->
-                <div class="table-responsive shadow-sm">
-                    <table class="table table-hover align-middle mb-0" id="deviceTable">
-                        <thead>
-                            <tr>
-                                <th style="width: 60px;">Roll</th>
-                                <th>Student Details</th>
-                                <th>Enrollment No</th>
-                                <th>Class</th>
-                                <th>Device Binding Status</th>
-                                <th class="text-end" style="width: 160px;">Actions</th>
-                            </tr>
-                        </thead>
+                <div class="card shadow-sm border-0 mb-4" style="border-radius: 14px; overflow: hidden;">
+                    <!-- Mobile Scroll Indicator Hint -->
+                    <div class="d-lg-none bg-light border-bottom px-3 py-2 text-muted small d-flex align-items-center justify-content-between">
+                        <span class="fs-8"><i class="bi bi-arrow-left-right text-primary me-1"></i> Swipe horizontally to view full device info (Actions pinned)</span>
+                        <span class="badge bg-primary-subtle text-primary fs-8">Scrollable</span>
+                    </div>
+                    <div class="table-responsive" style="-webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;">
+                        <table class="table table-hover align-middle mb-0" id="deviceTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px;" class="text-center">Roll</th>
+                                    <th>Student Details</th>
+                                    <th>Enrollment No</th>
+                                    <th>Class</th>
+                                    <th>Device Binding Status</th>
+                                    <th class="text-end sticky-action-col" style="width: 160px;">Actions</th>
+                                </tr>
+                            </thead>
                         <tbody id="deviceTableBody">
                             <tr>
                                 <td colspan="6" class="text-center py-5 text-muted">
@@ -555,7 +579,7 @@
                             </span>
                         </td>
                         <td>${statusBadge}</td>
-                        <td class="text-end">${actionBtn}</td>
+                        <td class="text-end sticky-action-col">${actionBtn}</td>
                     </tr>
                 `;
             });

@@ -98,26 +98,44 @@ function initPasswordToggle() {
  * 3. Login Form Client Validation
  */
 function initLoginForm() {
-  const loginForm = document.getElementById('adminLoginForm') || 
-                    document.getElementById('facultyLoginForm') || 
-                    document.getElementById('studentLoginForm');
-  const loginBtn = document.getElementById('loginBtn');
-  const loginBtnText = document.getElementById('loginBtnText');
-  const loginBtnSpinner = document.getElementById('loginBtnSpinner');
+  const loginForms = document.querySelectorAll('#adminLoginForm, #facultyLoginForm');
 
-  if (!loginForm || !loginBtn) return;
+  loginForms.forEach(form => {
+    const loginBtn = form.querySelector('#loginBtn, button[type="submit"]');
+    const loginBtnText = form.querySelector('#loginBtnText');
+    const loginBtnSpinner = form.querySelector('#loginBtnSpinner');
+    const card = form.closest('.login-card') || form.parentElement;
+    const alertBox = card ? card.querySelector('#clientErrorAlert') : null;
+    const alertMsg = card ? card.querySelector('#clientErrorMessage') : null;
 
-  loginForm.addEventListener('submit', (e) => {
-    // Check basic HTML validation
-    if (!loginForm.checkValidity()) {
-      e.preventDefault();
-      loginForm.classList.add('was-validated');
-      return;
-    }
+    form.addEventListener('submit', (e) => {
+      if (alertBox) alertBox.classList.add('d-none');
 
-    // Show loading state on button on submit
-    if (loginBtnSpinner) loginBtnSpinner.classList.remove('d-none');
-    if (loginBtnText) loginBtnText.textContent = 'Authenticating...';
+      const inputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="password"]');
+      let hasEmpty = false;
+
+      inputs.forEach(input => {
+        if (input.hasAttribute('required') && !input.value.trim()) {
+          hasEmpty = true;
+          input.classList.add('is-invalid');
+        } else {
+          input.classList.remove('is-invalid');
+        }
+      });
+
+      if (hasEmpty) {
+        e.preventDefault();
+        if (alertBox && alertMsg) {
+          alertMsg.textContent = 'Please fill in all required fields to continue.';
+          alertBox.classList.remove('d-none');
+        }
+        return;
+      }
+
+      // Show loading state on button on submit
+      if (loginBtnSpinner) loginBtnSpinner.classList.remove('d-none');
+      if (loginBtnText) loginBtnText.textContent = 'Authenticating...';
+    });
   });
 }
 

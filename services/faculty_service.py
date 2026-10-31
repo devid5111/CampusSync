@@ -573,7 +573,9 @@ def authenticate_faculty(email, password):
         return None, "Invalid email or password."
 
     email_clean = email.strip().lower()
-    faculty = Faculty.query.filter_by(email=email_clean).first()
+    faculty = Faculty.query.filter(
+        (Faculty.email == email_clean) | (Faculty.faculty_code == email.strip().upper())
+    ).first()
 
     # Password check
     is_valid = False
@@ -780,7 +782,7 @@ def get_faculty_marks_students(faculty_id, subject_id, division, semester=None, 
         Student.semester == sem,
         Student.division == division,
         Student.status == 'Active'
-    ).order_by(Student.roll_number.asc(), Student.full_name.asc()).all()
+    ).order_by(db.cast(Student.roll_number, db.Integer).asc(), Student.full_name.asc()).all()
 
     student_list = []
     for st in students:
@@ -906,7 +908,7 @@ def get_faculty_assigned_students(faculty_id, subject_id, division, semester=Non
         Student.semester == sem,
         Student.division == division,
         Student.status == 'Active'
-    ).order_by(Student.roll_number.asc(), Student.full_name.asc()).all()
+    ).order_by(db.cast(Student.roll_number, db.Integer).asc(), Student.full_name.asc()).all()
 
     student_list = []
     for st in students:

@@ -878,7 +878,7 @@ def get_semester_attendance_blacklist(semester, academic_year="2026-27", overall
     st_query = Student.query.filter_by(semester=sem_num, status='Active')
     if target_div and target_div != 'All':
         st_query = st_query.filter_by(division=target_div)
-    students = st_query.order_by(Student.roll_number.asc(), Student.enrollment_no.asc()).all()
+    students = st_query.order_by(db.cast(Student.roll_number, db.Integer).asc(), Student.enrollment_no.asc()).all()
 
     defaulters = []
     total_students = len(students)
@@ -1436,7 +1436,7 @@ def get_faculty_qr_live_roster(session_id):
             semester=sess.semester,
             division=sess.division,
             status='Active'
-        ).order_by(Student.roll_number.asc()).all()
+        ).order_by(db.cast(Student.roll_number, db.Integer).asc()).all()
 
         entries = {e.student_id: e for e in LectureAttendanceStudent.query.filter_by(session_id=sess.id).all()}
 
