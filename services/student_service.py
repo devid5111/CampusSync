@@ -206,8 +206,10 @@ def authenticate_student(email, password):
     if archived_student:
         return None, "This account belongs to a graduated / archived student. Portal login is disabled. Please view your results via the 'Old Student Result' portal on the home page."
 
-    # 2. Find student by email
-    student = Student.query.filter_by(email=cleaned_email).first()
+    # 2. Find student by email or enrollment number
+    student = Student.query.filter(
+        (Student.email == cleaned_email) | (Student.enrollment_no == email.strip())
+    ).first()
 
     # 3. Verify password if student exists
     is_valid_password = False

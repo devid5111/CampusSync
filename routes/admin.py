@@ -111,7 +111,7 @@ def api_get_students():
                 (Student.enrollment_no.ilike(f"%{query_param}%")) |
                 (Student.roll_number.ilike(f"%{query_param}%")) |
                 (Student.full_name.ilike(f"%{query_param}%"))
-            ).all()
+            ).order_by(Student.semester.asc(), db.cast(Student.roll_number, db.Integer).asc()).all()
 
             marks_student_ids = set(
                 rec.student_id for rec in InternalMark.query.with_entities(InternalMark.student_id).all()
@@ -1458,7 +1458,7 @@ def admin_old_students():
             (ArchivedStudent.email.ilike(q_term))
         )
 
-    old_students = query.order_by(db.cast(ArchivedStudent.roll_number, db.Integer).asc()).all()
+    old_students = query.order_by(ArchivedStudent.academic_year.desc(), db.cast(ArchivedStudent.roll_number, db.Integer).asc()).all()
 
     # Pre-calculate count of recorded marks per student
     total_old_students = len(old_students)
@@ -1957,7 +1957,7 @@ def admin_api_device_data():
     if division and division != 'all':
         query = query.filter_by(division=division)
 
-    students = query.order_by(Student.semester.asc(), Student.division.asc(), Student.roll_number.asc()).all()
+    students = query.order_by(Student.semester.asc(), Student.division.asc(), db.cast(Student.roll_number, db.Integer).asc()).all()
 
     total_count = 0
     bound_count = 0

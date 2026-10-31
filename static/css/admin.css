@@ -195,3 +195,34 @@
         grid-template-columns: 1fr;
     }
 }
+/* ============================================================
+   RESPONSIVE DATA TABLES & GLOBAL MOBILE ENHANCEMENTS
+   Ensures zero horizontal cutoff across all admin screens.
+   ============================================================ */
+.table-responsive {
+    border-radius: 12px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+}
+
+@media (max-width: 991.98px) {
+    .content-body {
+        padding: 1rem 0.75rem !important;
+    }
+    .card {
+        border-radius: 12px;
+    }
+    .page-header h2 {
+        font-size: 1.45rem !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .content-body {
+        padding: 0.75rem 0.5rem !important;
+    }
+    .btn-group-sm > .btn, .btn-sm {
+        padding: 0.35rem 0.55rem;
+        font-size: 0.78rem;
+    }
+}

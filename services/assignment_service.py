@@ -124,7 +124,7 @@ def get_assignment_submission_sheet(notification_id, faculty_id=None):
     if notice.target_division and notice.target_division != 'All':
         stud_query = stud_query.filter_by(division=notice.target_division)
 
-    students = stud_query.order_by(Student.roll_number.asc()).all()
+    students = stud_query.order_by(db.cast(Student.roll_number, db.Integer).asc()).all()
 
     # Query existing submissions for this assignment
     submissions = AssignmentSubmission.query.filter_by(notification_id=notice.id).all()

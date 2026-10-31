@@ -145,8 +145,14 @@
             </div>
             {% endif %}
 
+                        <!-- Dynamic Client-side Error Alert Banner -->
+            <div id="clientErrorAlert" class="alert alert-danger d-flex align-items-center mb-3 d-none" role="alert">
+              <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+              <div id="clientErrorMessage"></div>
+            </div>
+
             <!-- Login Form -->
-            <form id="adminLoginForm" action="/admin/login" method="POST" class="needs-validation" novalidate>
+            <form id="adminLoginForm" action="/admin/login" method="POST">
               
               <!-- Username Input -->
               <div class="mb-3">

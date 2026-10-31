@@ -836,7 +836,7 @@ def export_archived_students_excel(academic_year=None):
     if academic_year and academic_year.lower() != 'all':
         query = query.filter(ArchivedStudent.academic_year == academic_year)
 
-    students = query.order_by(ArchivedStudent.roll_number.asc()).all()
+    students = query.order_by(db.cast(ArchivedStudent.roll_number, db.Integer).asc()).all()
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -970,7 +970,7 @@ def export_archived_students_pdf(academic_year=None):
     if academic_year and academic_year.lower() != 'all':
         query = query.filter(ArchivedStudent.academic_year == academic_year)
 
-    students = query.order_by(ArchivedStudent.roll_number.asc()).all()
+    students = query.order_by(db.cast(ArchivedStudent.roll_number, db.Integer).asc()).all()
 
     output = io.BytesIO()
     doc = SimpleDocTemplate(

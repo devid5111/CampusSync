@@ -57,10 +57,11 @@ def facilities():
 
 @auth_bp.route('/gallery', endpoint='gallery')
 def gallery():
-    """Renders Campus Photo Gallery public page with category filtering and full-resolution lightbox viewer."""
+    """Renders Campus Photo Gallery public page with category filtering, instant search, and full-resolution lightbox viewer."""
     from services.gallery_service import get_active_gallery_items, GALLERY_CATEGORIES
     selected_category = request.args.get('category', 'All').strip()
-    photos = get_active_gallery_items(category=selected_category)
+    # Always fetch all active photos so client-side filter pills, search, and sorting work seamlessly across all categories
+    photos = get_active_gallery_items()
     return render_template(
         'public/gallery.html',
         photos=photos,
