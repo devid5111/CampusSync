@@ -3,10 +3,10 @@
 <head>
     <!-- Basic Meta Tags -->
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Academic Results – {{ student.full_name }} – {{ college.college_short_name if college and college.college_short_name else 'CampusSync' }}</title>
     
-    <!-- CSS Dependencies (Same as CampusSync Student Theme) -->
+    <!-- CSS Dependencies -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -17,6 +17,15 @@
         :root {
             --card-radius: 14px;
             --subtle-border: #e2e8f0;
+        }
+
+        html, body {
+            overflow-x: hidden;
+            max-width: 100vw;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
         }
 
         body {
@@ -32,14 +41,14 @@
         .portal-navbar {
             background: #ffffff;
             border-bottom: 1px solid var(--subtle-border);
-            padding: 0.85rem 0;
+            padding: 0.8rem 0;
             position: sticky;
             top: 0;
             z-index: 1000;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
         }
 
-        /* Results Hero Banner (Exact match to student/results.html) */
+        /* Results Hero Banner */
         .results-hero-card {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             border-radius: var(--card-radius);
@@ -63,7 +72,6 @@
             pointer-events: none;
         }
 
-        /* Hero Text Styles (Ensures 100% Crisp White Visibility) */
         .results-hero-card h2 {
             color: #ffffff !important;
             font-weight: 800;
@@ -89,19 +97,32 @@
             flex-shrink: 0;
         }
 
-        /* Filter Glass Card & Semester Pills (Exact match to student/results.html) */
+        /* Filter Glass Card & Semester Pills */
         .filter-glass-card {
             background: #ffffff;
             border-radius: var(--card-radius);
             border: 1px solid var(--subtle-border);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
-            padding: 1.25rem 1.5rem;
+            padding: 1.15rem 1.25rem;
+        }
+
+        .semester-pills-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+        }
+        .semester-pills-container::-webkit-scrollbar {
+            display: none;
         }
 
         .sem-pill-btn {
-            padding: 6px 16px;
+            padding: 7px 15px;
             border-radius: 30px;
-            font-size: 0.86rem;
+            font-size: 0.85rem;
             font-weight: 600;
             border: 1px solid #cbd5e1;
             background: #ffffff;
@@ -112,6 +133,8 @@
             align-items: center;
             gap: 6px;
             cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .sem-pill-btn:hover {
@@ -132,14 +155,16 @@
             padding: 2px 6px;
         }
 
-        /* Stat Metric Boxes (Exact match to student/results.html) */
+        /* Stat Metric Boxes */
         .stat-metric-box {
             background: #ffffff;
             border: 1px solid var(--subtle-border);
             border-radius: 12px;
-            padding: 1rem 1.25rem;
+            padding: 1rem 1.15rem;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
+            min-width: 0;
+            overflow: hidden;
         }
 
         .stat-metric-box:hover {
@@ -148,14 +173,46 @@
         }
 
         .stat-metric-box .metric-icon {
-            width: 44px;
-            height: 44px;
+            width: 42px;
+            height: 42px;
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.25rem;
             flex-shrink: 0;
+        }
+
+        .stat-metric-content {
+            min-width: 0;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .stat-metric-title {
+            font-size: 0.78rem;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .stat-metric-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0f172a;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.2;
+        }
+
+        .stat-division-badge {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #16a34a;
+            line-height: 1.25;
+            word-break: break-word;
         }
 
         /* Subject Cards & Tables */
@@ -191,87 +248,167 @@
             font-weight: 800;
             color: #2563eb;
         }
+
+        /* Mobile Subject Card Layout */
+        .subject-mobile-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px 15px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        .subject-mobile-card:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Responsive Breakpoints (< 768px and < 576px) */
+        @media (max-width: 767.98px) {
+            .results-hero-card {
+                padding: 1.25rem 1rem !important;
+                border-radius: 12px;
+            }
+            .hero-avatar-box {
+                width: 48px !important;
+                height: 48px !important;
+                font-size: 1.3rem !important;
+            }
+            .results-hero-card h2 {
+                font-size: 1.35rem !important;
+            }
+            .results-hero-actions {
+                width: 100%;
+                margin-top: 0.75rem;
+            }
+            .results-hero-actions .btn {
+                width: 100% !important;
+                font-size: 0.92rem !important;
+                padding: 0.65rem 1rem !important;
+            }
+            .results-hero-actions .badge {
+                width: 100% !important;
+                text-align: center;
+                display: block;
+                padding: 0.5rem !important;
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            main.container {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+            }
+            .portal-navbar {
+                padding: 0.55rem 0 !important;
+            }
+            .portal-navbar .btn-pdf-text {
+                display: none;
+            }
+            .portal-navbar .btn-signout-text {
+                display: none;
+            }
+            .stat-metric-box {
+                padding: 0.75rem 0.8rem !important;
+                gap: 0.55rem !important;
+            }
+            .stat-metric-box .metric-icon {
+                width: 34px !important;
+                height: 34px !important;
+                font-size: 1.05rem !important;
+            }
+            .stat-metric-title {
+                font-size: 0.68rem !important;
+            }
+            .stat-metric-val {
+                font-size: 1.05rem !important;
+            }
+            .stat-division-badge {
+                font-size: 0.78rem !important;
+            }
+        }
     </style>
 </head>
 <body class="student-theme">
 
     <!-- Top Navigation Header -->
     <header class="portal-navbar">
-        <div class="container d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center gap-2">
+        <div class="container d-flex align-items-center justify-content-between px-3">
+            <div class="d-flex align-items-center gap-2" style="min-width: 0;">
                 {% if college and college.logo and college.logo != 'default-logo.png' %}
-                    <img src="{{ url_for('admin.serve_uploads', filename='college/' + college.logo) }}" alt="Logo" class="rounded-circle" style="width: 36px; height: 36px; object-fit: contain;">
+                    <img src="{{ url_for('admin.serve_uploads', filename='college/' + college.logo) }}" alt="Logo" class="rounded-circle flex-shrink-0" style="width: 32px; height: 32px; object-fit: contain;">
                 {% else %}
-                    <i class="bi bi-mortarboard-fill fs-3 text-primary"></i>
+                    <i class="bi bi-mortarboard-fill fs-4 text-primary flex-shrink-0"></i>
                 {% endif %}
-                <div>
-                    <h6 class="fw-bold m-0 text-dark">{{ college.college_name if college else 'CampusSync College' }}</h6>
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.7rem;">
-                        Alumni Academic Archive
+                <div style="min-width: 0;">
+                    <h6 class="fw-bold m-0 text-dark text-truncate" style="font-size: 0.92rem;">
+                        {{ college.college_short_name if college and college.college_short_name else (college.college_name if college else 'CampusSync') }}
+                    </h6>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5" style="font-size: 0.68rem;">
+                        Alumni Archive
                     </span>
                 </div>
             </div>
 
             <!-- Action Buttons in Header -->
-            <div class="d-flex align-items-center gap-2">
-                <a href="{{ url_for('alumni.alumni_download_consolidated_pdf') }}" class="btn btn-primary btn-sm fw-semibold shadow-xs">
-                    <i class="bi bi-file-earmark-arrow-down-fill me-1"></i> Download All Semesters PDF
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                <a href="{{ url_for('alumni.alumni_download_consolidated_pdf') }}" class="btn btn-primary btn-sm fw-semibold shadow-xs px-2.5 py-1.5" title="Download Consolidated All Semesters PDF">
+                    <i class="bi bi-file-earmark-arrow-down-fill me-1"></i><span class="btn-pdf-text">All Semesters </span>PDF
                 </a>
-                <a href="{{ url_for('alumni.alumni_logout') }}" class="btn btn-outline-danger btn-sm fw-semibold">
-                    <i class="bi bi-box-arrow-right me-1"></i> Sign Out
+                <a href="{{ url_for('alumni.alumni_logout') }}" class="btn btn-outline-danger btn-sm fw-semibold px-2 py-1.5" title="Sign Out">
+                    <i class="bi bi-box-arrow-right me-sm-1"></i><span class="btn-signout-text">Sign Out</span>
                 </a>
             </div>
         </div>
     </header>
 
     <!-- Main Container -->
-    <main class="container py-4 flex-grow-1">
+    <main class="container py-3 py-md-4 flex-grow-1">
 
         <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show shadow-xs border-0 mb-4" role="alert">
-                        {{ message }}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show shadow-xs border-0 mb-3 fs-7" role="alert">
+                        <i class="bi bi-info-circle-fill me-1"></i> {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
-        <!-- Page Hero Header (Exact CampusSync Style) -->
-        <div class="results-hero-card mb-4">
+        <!-- Page Hero Header -->
+        <div class="results-hero-card mb-3 mb-md-4">
             <div class="row align-items-center g-3">
                 <div class="col-lg-8">
                     <div class="d-flex align-items-center gap-3">
                         <div class="hero-avatar-box">
                             {{ student.full_name[:1] if student.full_name else 'S' }}
                         </div>
-                        <div>
+                        <div style="min-width: 0;">
                             <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                                <span class="badge bg-success px-3 py-1 text-uppercase fw-semibold" style="letter-spacing: 0.05em;">
+                                <span class="badge bg-success px-2.5 py-1 text-uppercase fw-semibold fs-8" style="letter-spacing: 0.04em;">
                                     <i class="bi bi-check-circle-fill me-1"></i> {{ summary.graduation_status }}
                                 </span>
-                                <span class="badge bg-secondary-subtle text-white border border-light-subtle">
-                                    Passing Batch: {{ student.academic_year or 'Completed' }}
+                                <span class="badge bg-secondary-subtle text-white border border-light-subtle fs-8">
+                                    Batch: {{ student.academic_year or 'Completed' }}
                                 </span>
                             </div>
-                            <h2 class="text-white fw-bold mb-1">
+                            <h2 class="text-white fw-bold mb-1 text-truncate">
                                 <i class="bi bi-mortarboard-fill me-2 text-warning"></i>{{ student.full_name }}
                             </h2>
-                            <p class="text-white-50 mb-0 opacity-90 fs-7">
+                            <p class="text-white-50 mb-0 opacity-90 fs-7" style="line-height: 1.4;">
                                 Enrollment: <span class="font-monospace text-info fw-bold">{{ student.enrollment_no }}</span>
-                                &bull; Roll No: <strong class="text-white">{{ student.roll_number }}</strong>
-                                &bull; Course: <strong class="text-white">{{ student.course or 'BCA' }}</strong>
-                                &bull; Division: <strong class="text-white">{{ student.division or 'A' }}</strong>
+                                <span class="d-inline-block">&bull; Roll: <strong class="text-white">{{ student.roll_number }}</strong></span>
+                                <span class="d-inline-block">&bull; {{ student.course or 'BCA' }} - Div {{ student.division or 'A' }}</span>
                             </p>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-lg-4 text-lg-end">
-                    <div class="d-inline-flex flex-column align-items-lg-end gap-2">
-                        <a href="{{ url_for('alumni.alumni_download_consolidated_pdf') }}" class="btn btn-light btn-lg fw-bold shadow-sm px-4 text-primary">
+                    <div class="results-hero-actions d-inline-flex flex-column align-items-lg-end gap-2">
+                        <a href="{{ url_for('alumni.alumni_download_consolidated_pdf') }}" class="btn btn-light fw-bold shadow-sm text-primary">
                             <i class="bi bi-file-earmark-arrow-down-fill me-1 text-danger"></i> Download Consolidated Marksheet
                         </a>
                         <span class="badge bg-warning text-dark fw-bold px-3 py-2 fs-7 shadow-xs">
@@ -282,53 +419,53 @@
             </div>
         </div>
 
-        <!-- Cumulative Summary Metric Boxes (Matching student/results.html) -->
-        <div class="row g-3 mb-4">
+        <!-- Cumulative Summary Metric Boxes -->
+        <div class="row g-2 g-md-3 mb-3 mb-md-4">
             <div class="col-6 col-md-3">
-                <div class="stat-metric-box d-flex align-items-center gap-3">
+                <div class="stat-metric-box d-flex align-items-center gap-2 gap-md-3">
                     <div class="metric-icon bg-primary-subtle text-primary">
                         <i class="bi bi-layers-fill"></i>
                     </div>
-                    <div>
-                        <div class="fs-7 text-muted fw-semibold">Semesters Recorded</div>
-                        <div class="fs-5 fw-bold text-dark font-monospace">{{ summary.total_semesters }} <small class="text-muted fs-7">/ 6</small></div>
+                    <div class="stat-metric-content">
+                        <div class="stat-metric-title">Semesters</div>
+                        <div class="stat-metric-val">{{ summary.total_semesters }} <small class="text-muted fs-8 font-sans">/ 6</small></div>
                     </div>
                 </div>
             </div>
 
             <div class="col-6 col-md-3">
-                <div class="stat-metric-box d-flex align-items-center gap-3">
+                <div class="stat-metric-box d-flex align-items-center gap-2 gap-md-3">
                     <div class="metric-icon bg-success-subtle text-success">
                         <i class="bi bi-calculator-fill"></i>
                     </div>
-                    <div>
-                        <div class="fs-7 text-muted fw-semibold">Total Internal Marks</div>
-                        <div class="fs-5 fw-bold text-dark font-monospace">{{ summary.total_obtained }} <small class="text-muted fs-7">/ {{ summary.total_max }}</small></div>
+                    <div class="stat-metric-content">
+                        <div class="stat-metric-title">Total Marks</div>
+                        <div class="stat-metric-val">{{ summary.total_obtained }} <small class="text-muted fs-8 font-sans">/ {{ summary.total_max }}</small></div>
                     </div>
                 </div>
             </div>
 
             <div class="col-6 col-md-3">
-                <div class="stat-metric-box d-flex align-items-center gap-3">
+                <div class="stat-metric-box d-flex align-items-center gap-2 gap-md-3">
                     <div class="metric-icon bg-info-subtle text-info">
                         <i class="bi bi-percent"></i>
                     </div>
-                    <div>
-                        <div class="fs-7 text-muted fw-semibold">Cumulative Percentage</div>
-                        <div class="fs-5 fw-bold text-info font-monospace">{{ summary.overall_percentage }}%</div>
+                    <div class="stat-metric-content">
+                        <div class="stat-metric-title">Percentage</div>
+                        <div class="stat-metric-val text-info">{{ summary.overall_percentage }}%</div>
                     </div>
                 </div>
             </div>
 
             <div class="col-6 col-md-3">
-                <div class="stat-metric-box d-flex align-items-center gap-3">
+                <div class="stat-metric-box d-flex align-items-center gap-2 gap-md-3">
                     <div class="metric-icon bg-warning-subtle text-warning">
                         <i class="bi bi-trophy-fill"></i>
                     </div>
-                    <div>
-                        <div class="fs-7 text-muted fw-semibold">Awarded Division</div>
-                        <div class="fs-6 fw-bold text-dark text-truncate" title="{{ summary.class }}">
-                            <span class="text-success">{{ summary.class }}</span>
+                    <div class="stat-metric-content">
+                        <div class="stat-metric-title">Awarded Division</div>
+                        <div class="stat-division-badge" title="{{ summary.class }}">
+                            {{ summary.class }}
                         </div>
                     </div>
                 </div>
@@ -336,41 +473,37 @@
         </div>
 
         {% if not semesters %}
-            <div class="card border-0 shadow-sm p-5 text-center my-4">
+            <div class="card border-0 shadow-sm p-4 p-md-5 text-center my-4 rounded-4">
                 <div class="text-muted mb-3"><i class="bi bi-folder-x fs-1 text-secondary"></i></div>
                 <h5 class="fw-bold">No Semester Marks Recorded Yet</h5>
-                <p class="text-muted small">Your profile has been archived, but individual subject internal marks are still being digitized.</p>
+                <p class="text-muted small mb-0">Your profile has been archived, but individual subject internal marks are still being digitized.</p>
             </div>
         {% else %}
 
-            <!-- Filter Toolbar with Semester Pills (Exact match to student/results.html) -->
-            <div class="filter-glass-card mb-4">
-                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                    <div class="d-flex align-items-center gap-2 flex-wrap" role="tablist">
-                        <span class="fs-7 fw-bold text-secondary me-2">
-                            <i class="bi bi-filter-circle me-1 text-primary"></i> Select Semester:
+            <!-- Filter Toolbar with Semester Pills -->
+            <div class="filter-glass-card mb-3 mb-md-4">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div class="d-flex align-items-center gap-2" style="min-width: 0; width: 100%;">
+                        <span class="fs-7 fw-bold text-secondary me-1 flex-shrink-0 d-none d-sm-inline">
+                            <i class="bi bi-filter-circle me-1 text-primary"></i> Semester:
                         </span>
-                        {% for sem_num, sem_info in semesters.items() %}
-                            <button type="button" 
-                                    class="sem-pill-btn {% if loop.last %}active{% endif %}" 
-                                    id="pill-tab-{{ sem_num }}"
-                                    data-bs-toggle="tab" 
-                                    data-bs-target="#pane-sem-{{ sem_num }}"
-                                    role="tab"
-                                    aria-controls="pane-sem-{{ sem_num }}"
-                                    aria-selected="{{ 'true' if loop.last else 'false' }}">
-                                <span>Sem {{ sem_num }}</span>
-                                <span class="badge rounded-pill {% if sem_info.status == 'PASS' %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
-                                    {{ sem_info.subjects|length }} Sub
-                                </span>
-                            </button>
-                        {% endfor %}
-                    </div>
-
-                    <div>
-                        <span class="badge bg-light text-secondary border px-3 py-2">
-                            <i class="bi bi-check2-circle text-success me-1"></i> Verified Archive Records
-                        </span>
+                        <div class="semester-pills-container flex-grow-1" role="tablist">
+                            {% for sem_num, sem_info in semesters.items() %}
+                                <button type="button" 
+                                        class="sem-pill-btn {% if loop.last %}active{% endif %}" 
+                                        id="pill-tab-{{ sem_num }}"
+                                        data-bs-toggle="tab" 
+                                        data-bs-target="#pane-sem-{{ sem_num }}"
+                                        role="tab"
+                                        aria-controls="pane-sem-{{ sem_num }}"
+                                        aria-selected="{{ 'true' if loop.last else 'false' }}">
+                                    <span>Sem {{ sem_num }}</span>
+                                    <span class="badge rounded-pill {% if sem_info.status == 'PASS' %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
+                                        {{ sem_info.subjects|length }}
+                                    </span>
+                                </button>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -385,35 +518,35 @@
 
                         <!-- Subject Cards Header & Container -->
                         <div class="subject-result-card mb-4">
-                            <div class="p-3 bg-white border-bottom d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <div class="p-3 bg-white border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
                                 <div>
-                                    <h5 class="fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                                    <h5 class="fw-bold text-dark m-0 d-flex align-items-center gap-2 flex-wrap" style="font-size: 1.05rem;">
                                         <i class="bi bi-journals text-primary"></i>
                                         <span>Subject Breakdown (Semester {{ sem_num }})</span>
                                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-8">
-                                            Academic Year: {{ sem_info.academic_year }}
+                                            {{ sem_info.academic_year }}
                                         </span>
                                     </h5>
                                 </div>
 
                                 <a href="{{ url_for('alumni.alumni_download_semester_pdf', semester=sem_num) }}" 
                                    class="btn btn-outline-danger btn-sm fw-semibold shadow-xs">
-                                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Download Semester {{ sem_num }} PDF
+                                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Download Sem {{ sem_num }} PDF
                                 </a>
                             </div>
 
-                            <!-- Subject Evaluation Table -->
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0">
+                            <!-- Desktop / Tablet Table View (>= 768px) -->
+                            <div class="table-responsive d-none d-md-block" style="-webkit-overflow-scrolling: touch;">
+                                <table class="table table-hover align-middle mb-0" style="min-width: 680px;">
                                     <thead>
                                         <tr>
-                                            <th style="width: 60px;" class="text-center">Sr</th>
-                                            <th style="width: 140px;">Subject Code</th>
+                                            <th style="width: 50px;" class="text-center">Sr</th>
+                                            <th style="width: 130px;">Subject Code</th>
                                             <th>Subject Name</th>
-                                            <th style="width: 150px;" class="text-center">Marks Obtained</th>
-                                            <th style="width: 120px;" class="text-center">Max Marks</th>
-                                            <th style="width: 120px;" class="text-center">Percentage</th>
-                                            <th style="width: 110px;" class="text-center">Status</th>
+                                            <th style="width: 140px;" class="text-center">Marks Obtained</th>
+                                            <th style="width: 110px;" class="text-center">Max Marks</th>
+                                            <th style="width: 110px;" class="text-center">Percentage</th>
+                                            <th style="width: 100px;" class="text-center">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -464,6 +597,71 @@
                                     </tfoot>
                                 </table>
                             </div>
+
+                            <!-- Mobile Card View (< 768px) -->
+                            <div class="d-md-none p-3 bg-light-subtle">
+                                {% for sub in sem_info.subjects %}
+                                    <div class="subject-mobile-card">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-dark font-monospace fs-8">{{ sub.subject_code }}</span>
+                                            {% if sub.status == 'PASS' %}
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle fs-8">
+                                                    <i class="bi bi-check2 me-0.5"></i> PASS
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle fs-8">
+                                                    <i class="bi bi-x me-0.5"></i> ATKT
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        <h6 class="fw-bold text-dark mb-2" style="font-size: 0.92rem; line-height: 1.35;">
+                                            {{ sub.subject_name }}
+                                        </h6>
+                                        <div class="d-flex justify-content-between align-items-baseline pt-2 border-top">
+                                            <div>
+                                                <span class="text-muted fs-8">Score: </span>
+                                                <span class="score-val" style="font-size: 1.15rem;">{{ sub.marks_obtained }}</span>
+                                                <span class="text-muted fs-8 font-monospace">/ {{ sub.max_marks }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold fs-8 font-monospace">
+                                                    {{ sub.percentage }}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <!-- Mini Progress Bar -->
+                                        <div class="progress mt-2" style="height: 5px;">
+                                            <div class="progress-bar {% if sub.percentage >= 70 %}bg-success{% elif sub.percentage >= 40 %}bg-primary{% else %}bg-danger{% endif %}" 
+                                                 role="progressbar" 
+                                                 style="width: {{ sub.percentage }}%" 
+                                                 aria-valuenow="{{ sub.percentage }}" 
+                                                 aria-valuemin="0" 
+                                                 aria-valuemax="100">
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+
+                                <!-- Mobile Cumulative Semester Card -->
+                                <div class="p-3 bg-white border rounded-3 mt-3 shadow-xs">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold text-secondary fs-8 text-uppercase">Sem {{ sem_num }} Total</span>
+                                        <span class="badge {% if sem_info.status == 'PASS' %}bg-success{% else %}bg-danger{% endif %} fs-8">
+                                            {{ sem_info.status }}
+                                        </span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-baseline">
+                                        <div>
+                                            <span class="fs-5 fw-bold text-primary font-monospace">{{ sem_info.total_obtained }}</span>
+                                            <span class="text-muted fs-7">/ {{ sem_info.total_max }}</span>
+                                        </div>
+                                        <div class="fs-6 fw-bold text-info font-monospace">
+                                            {{ sem_info.percentage }}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
 
                     </div>
@@ -476,14 +674,14 @@
 
     <!-- Footer -->
     <footer class="py-3 text-center text-muted small border-top bg-white mt-auto">
-        <div class="container d-flex flex-column flex-sm-row align-items-center justify-content-between gap-2">
-            <span>© {{ college.college_name if college else 'CampusSync ERP' }} • Historical Academic Transcript Portal</span>
+        <div class="container d-flex flex-column flex-sm-row align-items-center justify-content-between gap-2 px-3">
+            <span class="fs-8">© {{ college.college_name if college else 'CampusSync ERP' }} • Alumni Portal</span>
             <div class="d-flex align-items-center gap-3">
-                <a href="{{ url_for('alumni.alumni_download_consolidated_pdf') }}" class="text-decoration-none small text-primary fw-semibold">
-                    <i class="bi bi-file-earmark-arrow-down-fill me-1"></i> Consolidated PDF Marksheet
+                <a href="{{ url_for('alumni.alumni_download_consolidated_pdf') }}" class="text-decoration-none fs-8 text-primary fw-semibold">
+                    <i class="bi bi-file-earmark-arrow-down-fill me-1"></i> Consolidated PDF
                 </a>
-                <a href="{{ url_for('home') }}" class="text-decoration-none small text-muted">
-                    Campus Home
+                <a href="{{ url_for('home') }}" class="text-decoration-none fs-8 text-muted">
+                    Home
                 </a>
             </div>
         </div>
