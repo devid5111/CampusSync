@@ -11,6 +11,7 @@
     let cachedFeed = [];
     let currentUnreadCount = 0;
     let pollInterval = null;
+    let lastToggleTimestamp = 0;
 
     function escapeHtml(str) {
         if (!str) return '';
@@ -46,11 +47,21 @@
             const data = await response.json();
             if (!data.success || !data.authenticated) return;
 
-            currentUnreadCount = data.unread_count || 0;
+            const menu = document.querySelector('.notification-dropdown-menu');
+            const isMenuOpen = menu && menu.classList.contains('show');
+
             cachedFeed = data.notifications || [];
 
-            updateBadgeUI(currentUnreadCount);
-            renderDropdownList(cachedFeed, currentUnreadCount);
+            if (isMenuOpen) {
+                // If user is currently looking at the open dropdown, keep count 0 and badge hidden
+                currentUnreadCount = 0;
+                updateBadgeUI(0);
+                renderDropdownList(cachedFeed, 0);
+            } else {
+                currentUnreadCount = data.unread_count || 0;
+                updateBadgeUI(currentUnreadCount);
+                renderDropdownList(cachedFeed, currentUnreadCount);
+            }
         } catch (err) {
             console.warn('CampusSync Notification Feed polling error:', err);
         }
@@ -166,6 +177,30 @@
 
         menu.classList.add('show');
         if (bellBtn) bellBtn.setAttribute('aria-expanded', 'true');
+
+        // Immediate Unread Counter Clearing when User Views the Bell Menu
+        if (currentUnreadCount > 0) {
+            currentUnreadCount = 0;
+            updateBadgeUI(0);
+
+            // Remove unread dots in the dropdown list visually
+            document.querySelectorAll('.notification-item.is-unread').forEach(el => {
+                el.classList.remove('is-unread');
+                const dot = el.querySelector('.unread-dot');
+                if (dot) dot.remove();
+            });
+
+            // Mark cached notifications as read locally
+            cachedFeed.forEach(n => { n.is_read = true; });
+
+            // Persist to database asynchronously
+            const portal = getPortalRole();
+            fetch('/api/v1/notifications/mark-read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ mark_all: true, portal: portal })
+            }).catch(err => console.warn('Background mark-read error:', err));
+        }
     }
 
     function closeCampusNotificationDropdown() {
@@ -182,6 +217,14 @@
             if (e.preventDefault) e.preventDefault();
             if (e.stopPropagation) e.stopPropagation();
         }
+
+        const now = Date.now();
+        // Prevent double invocation within 250ms (debounces rapid clicks and touch+click cycles)
+        if (now - lastToggleTimestamp < 250) {
+            return;
+        }
+        lastToggleTimestamp = now;
+
         const menu = document.querySelector('.notification-dropdown-menu');
         if (!menu) return;
 
@@ -384,6 +427,9 @@
         if (bellBtn && !bellBtn._campusBellBound) {
             bellBtn._campusBellBound = true;
             bellBtn.addEventListener('click', toggleCampusNotificationDropdown);
+            bellBtn.addEventListener('touchend', function (e) {
+                toggleCampusNotificationDropdown(e);
+            });
         }
 
         if (menu && !menu._campusMenuBound) {
@@ -395,10 +441,23 @@
                     e.stopPropagation();
                 }
             });
+            menu.addEventListener('touchend', function (e) {
+                const isInteractive = e.target.closest('button') || e.target.closest('a') || e.target.closest('.notification-item');
+                if (!isInteractive) {
+                    e.stopPropagation();
+                }
+            });
         }
 
-        // Close dropdown when clicking outside
+        // Close dropdown when clicking or touching outside
         document.addEventListener('click', function (e) {
+            const wrapper = document.querySelector('.notification-dropdown-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                closeCampusNotificationDropdown();
+            }
+        });
+
+        document.addEventListener('touchend', function (e) {
             const wrapper = document.querySelector('.notification-dropdown-wrapper');
             if (wrapper && !wrapper.contains(e.target)) {
                 closeCampusNotificationDropdown();

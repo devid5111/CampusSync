@@ -977,8 +977,18 @@ def mark_all_notifications_as_read(user_role, user_id):
             existing_reads = {r.notification_id for r in read_rows}
         except Exception as read_err:
             db.session.rollback()
-            current_app.logger.warning(f"[NotificationRead Error] {read_err}")
-            return 0
+            ensure_notification_reads_table()
+            try:
+                read_rows = NotificationRead.query.filter(
+                    NotificationRead.user_role == user_role,
+                    NotificationRead.user_id == user_id,
+                    NotificationRead.notification_id.in_(notice_ids)
+                ).all()
+                existing_reads = {r.notification_id for r in read_rows}
+            except Exception:
+                db.session.rollback()
+                current_app.logger.warning(f"[NotificationRead Error] {read_err}")
+                return 0
 
         added_count = 0
         now = datetime.utcnow()
