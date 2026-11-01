@@ -1272,11 +1272,17 @@ def faculty_notices():
         db.session.rollback()
         current_app.logger.error(f"[Faculty Notices Campus Error] {camp_err}")
 
+    from services.notification_service import get_ist_now
+    now_ist = get_ist_now()
+    expired_with_files = [n for n in created_notices if n.photo_file and n.end_date and n.end_date <= now_ist]
+
     return render_template(
         'faculty/notices.html',
         assigned_subjects=assigned_subjects,
         created_notices=created_notices,
         campus_notices=campus_notices,
+        expired_with_files=expired_with_files,
+        now_ist=now_ist,
         active_semesters=active_semesters,
         semester_cycle=cycle,
         active_page='notices'

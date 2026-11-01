@@ -1621,9 +1621,15 @@ def admin_notices():
         current_app.logger.error(f"[Admin Notices Query Error] {notif_err}")
         notices = []
 
+    from services.notification_service import get_ist_now
+    now_ist = get_ist_now()
+    expired_with_files = [n for n in notices if n.photo_file and n.end_date and n.end_date <= now_ist]
+
     return render_template(
         'admin/notices.html',
         notices=notices,
+        expired_with_files=expired_with_files,
+        now_ist=now_ist,
         active_semesters=active_semesters,
         semester_cycle=cycle,
         active_page='notices'

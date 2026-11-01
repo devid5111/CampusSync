@@ -102,6 +102,65 @@
             {% endif %}
             {% endwith %}
 
+            <!-- Expired Notification with File Alert Dialog -->
+            {% if expired_with_files %}
+            <div class="modal fade show d-block" id="expiredFileAlertModal" tabindex="-1" style="background: rgba(0,0,0,0.5); z-index: 1055;" aria-modal="true" role="dialog">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                        <div class="modal-header bg-warning-subtle text-dark border-0 px-4 py-3">
+                            <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                                <i class="bi bi-exclamation-triangle-fill text-warning fs-4"></i>
+                                Expired Notification With Attached File
+                            </h5>
+                            <button type="button" class="btn-close" onclick="dismissExpiredModal()"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <p class="text-secondary mb-3">
+                                તમે મૂકેલી નીચે દર્શાવેલ નોટિફિકેશનની સમયમર્યાદા (Deadline / Expiry) પૂર્ણ થઈ ગઈ છે અને તેની સાથે સર્વર પર ફાઇલ એટેચ થયેલ છે:
+                            </p>
+                            {% for en in expired_with_files %}
+                            <div class="p-3 mb-3 rounded-3 border bg-light shadow-sm" id="expired-notice-card-{{ en.id }}">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                        <div class="fw-bold text-dark fs-6">{{ en.title }}</div>
+                                        <div class="small text-muted mt-1">
+                                            <i class="bi bi-clock-history text-danger me-1"></i>Expired on: <strong>{{ en.end_date.strftime('%d %b %Y, %I:%M %p') }}</strong>
+                                            &bull; <i class="bi bi-paperclip text-primary me-1"></i>File: <span class="badge bg-secondary">{{ en.photo_file }}</span>
+                                        </div>
+                                    </div>
+                                    <a href="{{ url_for('global_serve_uploads', filename='notifications/' + en.photo_file) }}" target="_blank" class="btn btn-sm btn-outline-primary px-2 py-1" style="font-size: 0.75rem;">
+                                        <i class="bi bi-eye me-1"></i>View File
+                                    </a>
+                                </div>
+                                <div class="alert alert-warning py-2 px-3 mt-3 mb-0 small border-warning">
+                                    <i class="bi bi-question-circle-fill me-1 text-warning"></i>
+                                    <strong>આ નોટિફિકેશન સાથે ફાઇલ છે. શું તમે તેને અને સર્વરમાંથી ફાઇલને ડિલીટ કરવા માંગો છો?</strong>
+                                    <div class="text-muted" style="font-size: 0.75rem; margin-top: 2px;">
+                                        જો તમે <strong>"ના (Keep)"</strong> કરશો તો નોટિફિકેશન એમ જ રહેશે અને તમે તેને પછી જાતે મેન્યુઅલી ડિલીટ કરી શકશો.
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-end gap-2 mt-3">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm px-3" onclick="dismissSingleNoticeCard('{{ en.id }}')">
+                                        <i class="bi bi-x-circle me-1"></i>ના, નોટિફિકેશન રહેવા દો (Keep)
+                                    </button>
+                                    <form action="{{ url_for('faculty_delete_notice', notice_id=en.id) }}" method="POST" class="d-inline">
+                                        <button type="submit" class="btn btn-danger btn-sm px-3 fw-semibold">
+                                            <i class="bi bi-trash-fill me-1"></i>હા, ડિલીટ કરો (Delete Notice &amp; File)
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="modal-footer bg-light border-0 py-2 px-4 justify-content-between">
+                            <small class="text-muted">તમે ગમે ત્યારે નીચેના ટેબલમાંથી પણ મેન્યુઅલી ડિલીટ કરી શકો છો.</small>
+                            <button type="button" class="btn btn-secondary btn-sm px-3" onclick="dismissExpiredModal()">બંધ કરો (Close)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Notice Creation Card -->
             <div class="card shadow-sm border-0 mb-4 rounded-4 overflow-hidden">
                 <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
@@ -273,6 +332,9 @@
                                         <td class="ps-4">
                                             <div class="fw-bold text-dark">{{ n.title }}</div>
                                             <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.72rem;">{{ n.category }}</span>
+                                            {% if n.photo_file and n.end_date and now_ist and n.end_date <= now_ist %}
+                                                <span class="badge bg-warning text-dark border border-warning" style="font-size: 0.72rem;"><i class="bi bi-paperclip me-1"></i>Expired (File Attached)</span>
+                                            {% endif %}
                                             {% if n.priority == 'Urgent' %}
                                                 <span class="badge bg-danger text-white" style="font-size: 0.72rem;">🚨 Urgent</span>
                                             {% endif %}
@@ -310,8 +372,8 @@
                                                     <i class="bi bi-ui-checks"></i> Verify Submissions
                                                 </a>
                                             {% endif %}
-                                            <form action="{{ url_for('faculty_delete_notice', notice_id=n.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this notification?');">
-                                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
+                                            <form action="{{ url_for('faculty_delete_notice', notice_id=n.id) }}" method="POST" class="d-inline">
+                                                <button type="button" class="btn btn-outline-danger btn-sm" title="Delete" onclick="handleNoticeDelete(event, this, '{{ n.photo_file or '' }}', '{{ n.title|escape }}')">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </form>

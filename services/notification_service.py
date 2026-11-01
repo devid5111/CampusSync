@@ -31,10 +31,13 @@ def auto_clean_expired_broadcast_notices():
     now = get_ist_now()
     try:
         from models import AssignmentSubmission
+        # Strictly auto-delete ONLY notices that do NOT have attached files.
+        # If a notification has an attached file, keep it so the creator is alerted and decides whether to delete it.
         expired_notices = Notification.query.filter(
             Notification.end_date.isnot(None),
             Notification.end_date <= now,
-            Notification.category != 'Assignment Submit Date'
+            Notification.category != 'Assignment Submit Date',
+            Notification.photo_file.is_(None)
         ).all()
 
         deleted_any = False
@@ -651,8 +654,7 @@ def get_student_notices(student, category=None):
             # Schedule / Expiry filtering for broadcast notices:
             if n.start_date and n.start_date > now:
                 continue
-            if n.category != 'Assignment Submit Date' and n.end_date and n.end_date <= now:
-                continue
+# Kept active if creator chooses not to delete notice with file
 
             # 4. Device Binding Bulk Alert Filter (only 1 device reminder banner on dashboard):
             if is_device_notice:
@@ -789,14 +791,16 @@ def delete_notification(notification_id, requester_role, requester_id):
     if requester_role == 'Faculty' and (notice.posted_by_role != 'Faculty' or notice.faculty_id != requester_id):
         return False, "Unauthorized to delete this notification"
 
-    # Remove attachment file if exists
+    # Remove attachment file from server disk if exists
     if notice.photo_file:
-        try:
-            file_path = os.path.join(current_app.root_path, 'uploads', 'notifications', notice.photo_file)
-            if os.path.exists(file_path):
-                os.remove(file_path)
-        except Exception as e:
-            current_app.logger.warning(f"Could not remove notification file: {e}")
+        for base in [os.path.join(current_app.root_path, 'uploads', 'notifications'),
+                     os.path.join(current_app.root_path, 'static', 'uploads', 'notifications')]:
+            fpath = os.path.join(base, notice.photo_file)
+            if os.path.exists(fpath):
+                try:
+                    os.remove(fpath)
+                except Exception as e:
+                    current_app.logger.warning(f"Could not remove notification file: {e}")
 
     try:
         db.session.delete(notice)
