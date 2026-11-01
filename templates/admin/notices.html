@@ -122,7 +122,7 @@
                         </div>
                         <div class="modal-body p-4">
                             <p class="text-secondary mb-3">
-                                નીચે દર્શાવેલ નોટિફિકેશનની સમયમર્યાદા (Deadline / Expiry) પૂર્ણ થઈ ગઈ છે અને તેની સાથે સર્વર પર ફાઇલ એટેચ થયેલ છે:
+                                The following notification has reached its deadline/expiry date and has an attached file stored on the server:
                             </p>
                             {% for en in expired_with_files %}
                             <div class="p-3 mb-3 rounded-3 border bg-light shadow-sm" id="expired-notice-card-{{ en.id }}">
@@ -140,18 +140,18 @@
                                 </div>
                                 <div class="alert alert-warning py-2 px-3 mt-3 mb-0 small border-warning">
                                     <i class="bi bi-question-circle-fill me-1 text-warning"></i>
-                                    <strong>આ નોટિફિકેશન સાથે ફાઇલ છે. શું તમે તેને અને સર્વરમાંથી ફાઇલને ડિલીટ કરવા માંગો છો?</strong>
+                                    <strong>This notification has an attached file. Do you want to delete this notification and permanently remove the attached file from the server?</strong>
                                     <div class="text-muted" style="font-size: 0.75rem; margin-top: 2px;">
-                                        જો તમે <strong>"ના (Keep)"</strong> કરશો તો નોટિફિકેશન એમ જ રહેશે અને તમે તેને પછી જાતે મેન્યુઅલી ડિલીટ કરી શકશો.
+                                        If you choose <strong>"No, Keep Notification"</strong>, the notice will remain saved and you can manually delete it later.
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-end gap-2 mt-3">
                                     <button type="button" class="btn btn-outline-secondary btn-sm px-3" onclick="dismissSingleNoticeCard('{{ en.id }}')">
-                                        <i class="bi bi-x-circle me-1"></i>ના, નોટિફિકેશન રહેવા દો (Keep)
+                                        <i class="bi bi-x-circle me-1"></i>No, Keep Notification
                                     </button>
                                     <form action="{{ url_for('admin_delete_notice', notice_id=en.id) }}" method="POST" class="d-inline">
                                         <button type="submit" class="btn btn-danger btn-sm px-3 fw-semibold">
-                                            <i class="bi bi-trash-fill me-1"></i>હા, ડિલીટ કરો (Delete Notice &amp; File)
+                                            <i class="bi bi-trash-fill me-1"></i>Yes, Delete Notice &amp; File
                                         </button>
                                     </form>
                                 </div>
@@ -159,8 +159,8 @@
                             {% endfor %}
                         </div>
                         <div class="modal-footer bg-light border-0 py-2 px-4 justify-content-between">
-                            <small class="text-muted">તમે ગમે ત્યારે નીચેના ટેબલમાંથી પણ મેન્યુઅલી ડિલીટ કરી શકો છો.</small>
-                            <button type="button" class="btn btn-secondary btn-sm px-3" onclick="dismissExpiredModal()">બંધ કરો (Close)</button>
+                            <small class="text-muted">You can also manually delete notifications from the table below at any time.</small>
+                            <button type="button" class="btn btn-secondary btn-sm px-3" onclick="dismissExpiredModal()">Close</button>
                         </div>
                     </div>
                 </div>
@@ -502,6 +502,41 @@ function clearNoticeAttachment() {
     input.value = '';
     document.getElementById('attachmentPreviewWrapper').style.display = 'none';
 }
+
+// Expired Notice Modal and Delete Confirmation Handlers
+function dismissExpiredModal() {
+    const modal = document.getElementById('expiredFileAlertModal');
+    if (modal) {
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        modal.remove();
+    }
+}
+
+function dismissSingleNoticeCard(noticeId) {
+    const card = document.getElementById('expired-notice-card-' + noticeId);
+    if (card) {
+        card.remove();
+    }
+    const remainingCards = document.querySelectorAll('[id^="expired-notice-card-"]');
+    if (remainingCards.length === 0) {
+        dismissExpiredModal();
+    }
+}
+
+function handleNoticeDelete(event, btn, photoFile, title) {
+    event.preventDefault();
+    let msg = '';
+    if (photoFile && photoFile.trim() !== '') {
+        msg = `⚠️ This notification has an attached file (${photoFile}).\n\nDo you want to delete this notification and permanently remove the attached file from the server?`;
+    } else {
+        msg = `Are you sure you want to delete notification "${title}"?`;
+    }
+    if (confirm(msg)) {
+        btn.closest('form').submit();
+    }
+}
+
 </script>
 <script src="{{ url_for('static', filename='js/common.js') }}"></script>
 </body>
