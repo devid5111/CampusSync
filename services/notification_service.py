@@ -8,11 +8,55 @@ attachment uploads, urgency alerts, and live countdown data.
 
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 from flask import current_app
 from extensions import db
 from models import Notification, NotificationRead, Subject, FacultySubjectAssignment, Student, Admin, Faculty
+
+
+IST_ZONE = timezone(timedelta(hours=5, minutes=30))
+
+
+def get_ist_now():
+    """Returns current naive datetime in Indian Standard Time (IST, UTC+5:30)."""
+    return datetime.now(IST_ZONE).replace(tzinfo=None)
+
+
+def auto_clean_expired_broadcast_notices():
+    """
+    Auto-deletes non-assignment broadcast notices whose timeline expiry (end_date) has arrived in IST.
+    Protects academic assignments (category 'Assignment Submit Date') and student submissions from deletion.
+    """
+    now = get_ist_now()
+    try:
+        from models import AssignmentSubmission
+        expired_notices = Notification.query.filter(
+            Notification.end_date.isnot(None),
+            Notification.end_date <= now,
+            Notification.category != 'Assignment Submit Date'
+        ).all()
+
+        deleted_any = False
+        for n in expired_notices:
+            has_sub = AssignmentSubmission.query.filter_by(notification_id=n.id).first()
+            if not has_sub:
+                if n.photo_file:
+                    try:
+                        fpath = os.path.join(current_app.root_path, 'uploads', 'notifications', n.photo_file)
+                        if os.path.exists(fpath):
+                            os.remove(fpath)
+                    except Exception:
+                        pass
+                db.session.delete(n)
+                deleted_any = True
+
+        if deleted_any:
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.warning(f"[auto_clean_expired_broadcast_notices Error] {e}")
+
 
 ALLOWED_EXTENSIONS = {
     'png', 'jpg', 'jpeg', 'webp', 'gif',
@@ -269,6 +313,7 @@ def create_notification(title, message, category, posted_by_role,
 
 def get_public_notices(limit=10):
     """Fetches active notifications targeted to Guest or All for the college homepage."""
+    auto_clean_expired_broadcast_notices()
     def _fetch():
         return Notification.query.filter(
             Notification.target_audience.in_(['Guest', 'All']),
@@ -292,6 +337,7 @@ def get_public_notices(limit=10):
 
 def get_faculty_notices(filter_by_cycle=True):
     """Fetches active campus notices intended for Faculty or All, filtered by active semester cycle."""
+    auto_clean_expired_broadcast_notices()
     def _fetch():
         return Notification.query.filter(
             Notification.target_audience.in_(['Faculty', 'All']),
@@ -392,6 +438,7 @@ def get_faculty_created_notices(faculty_id, filter_by_cycle=True):
 
 def get_admin_feed_notices(filter_by_cycle=True):
     """
+    auto_clean_expired_broadcast_notices()
     Fetches active notifications meant specifically for Administrator personal feed & topbar bell.
     Strictly includes only notices with target_audience in ('Admin', 'All').
     STRICTLY EXCLUDES student-specific notices (assignments, device reminders, etc.) and faculty-only notices.
@@ -446,6 +493,7 @@ def get_admin_feed_notices(filter_by_cycle=True):
 
 def get_all_admin_notices(filter_by_cycle=True):
     """Fetches all notices (for Admin management table), filtered by active semester cycle."""
+    auto_clean_expired_broadcast_notices()
     def _fetch():
         return Notification.query.order_by(Notification.created_at.desc()).all()
 
@@ -502,6 +550,9 @@ def get_student_notices(student, category=None):
     """
     if not student:
         return []
+
+    auto_clean_expired_broadcast_notices()
+    now = get_ist_now()
 
     sem = student.semester
     div = str(student.division or 'All').strip().upper()
@@ -576,6 +627,7 @@ def get_student_notices(student, category=None):
                         if seen_device_notice:
                             continue
                         seen_device_notice = True
+                    n.deadline_info = calculate_deadline_info(n)
                     filtered.append(n)
                 continue
 
@@ -596,14 +648,25 @@ def get_student_notices(student, category=None):
                 if n.subject and n.subject.semester is not None and n.subject.semester != sem:
                     continue
 
+            # Schedule / Expiry filtering for broadcast notices:
+            if n.start_date and n.start_date > now:
+                continue
+            if n.category != 'Assignment Submit Date' and n.end_date and n.end_date <= now:
+                continue
+
             # 4. Device Binding Bulk Alert Filter (only 1 device reminder banner on dashboard):
             if is_device_notice:
                 if seen_device_notice:
                     continue
                 seen_device_notice = True
 
+            n.deadline_info = calculate_deadline_info(n)
             filtered.append(n)
         except Exception:
+            try:
+                n.deadline_info = calculate_deadline_info(n)
+            except Exception:
+                pass
             filtered.append(n)
 
     return filtered
@@ -611,13 +674,20 @@ def get_student_notices(student, category=None):
 
 def calculate_deadline_info(notice):
     """
-    Calculates remaining time, urgency, and countdown flags for a notice.
-    Alert starts when 2 days (48 hours) or less remain until end_date.
+    Calculates remaining time, urgency, countdown flags, and extra-day banner state for a notice.
+    All calculations are strictly based on Indian Standard Time (IST, UTC+5:30).
+    - Active countdown: starts when <= 2 days (48 hours / 172800 seconds) remain until end_date.
+    - Extra 1 Day Grace Banner: after deadline passes, remains visible in student urgent banner
+      for an extra 1 day (up to 24 hours / 86400 seconds past end_date).
+      During this extra day, the timer is stopped and shows 'Assignment Date Over • Submission Closed'.
+    - After Extra 1 Day (> 24 hours past end_date): completely excluded from urgent banner.
     """
     if not notice.end_date:
         return {
             'has_deadline': False,
             'is_expired': False,
+            'is_extra_day': False,
+            'is_completely_expired': False,
             'is_urgent': (getattr(notice, 'priority', 'Normal') == 'Urgent'),
             'total_seconds': 0,
             'days': 0,
@@ -628,38 +698,45 @@ def calculate_deadline_info(notice):
             'end_date_iso': None
         }
 
-    now = datetime.utcnow()
+    now = get_ist_now()
     diff = notice.end_date - now
-    total_seconds = int(diff.total_seconds())
+    diff_seconds = int(diff.total_seconds())
 
-    if total_seconds <= 0:
+    # 1. Deadline has passed (diff_seconds <= 0)
+    if diff_seconds <= 0:
+        # Check if still within the 1 extra day (24 hours / 86400 seconds) after deadline
+        is_extra_day = (diff_seconds >= -86400)
         return {
             'has_deadline': True,
             'is_expired': True,
-            'is_urgent': False,
+            'is_extra_day': is_extra_day,
+            'is_completely_expired': not is_extra_day,
+            'is_urgent': is_extra_day,  # Still urgent/visible during the 1 extra day
             'total_seconds': 0,
             'days': 0,
             'hours': 0,
             'minutes': 0,
             'seconds': 0,
-            'countdown_str': 'Deadline Passed',
+            'countdown_str': 'Assignment Date Over • Submission Closed',
             'end_date_iso': notice.end_date.strftime('%Y-%m-%dT%H:%M:%S')
         }
 
-    days = total_seconds // 86400
-    hours = (total_seconds % 86400) // 3600
-    minutes = (total_seconds % 3600) // 60
-    seconds = total_seconds % 60
+    # 2. Deadline is active in future
+    days = diff_seconds // 86400
+    hours = (diff_seconds % 86400) // 3600
+    minutes = (diff_seconds % 3600) // 60
+    seconds = diff_seconds % 60
 
-    is_urgent = (total_seconds <= (2 * 86400)) or (getattr(notice, 'priority', 'Normal') == 'Urgent')
-
+    is_urgent = (diff_seconds <= (2 * 86400)) or (getattr(notice, 'priority', 'Normal') == 'Urgent')
     countdown_str = f"{days:02d}d : {hours:02d}h : {minutes:02d}m : {seconds:02d}s Left"
 
     return {
         'has_deadline': True,
         'is_expired': False,
+        'is_extra_day': False,
+        'is_completely_expired': False,
         'is_urgent': is_urgent,
-        'total_seconds': total_seconds,
+        'total_seconds': diff_seconds,
         'days': days,
         'hours': hours,
         'minutes': minutes,
@@ -672,8 +749,10 @@ def calculate_deadline_info(notice):
 def get_student_urgent_notices(student):
     """
     Returns urgent notices for this student:
-    - Notices with active deadlines <= 2 days
+    - Notices with active deadlines <= 2 days (live countdown)
+    - Notices whose deadline has passed but are within the extra 1 day (timer stopped, 'Assignment Date Over • Submission Closed')
     - Direct or Priority='Urgent' notices (such as Device Registration Alerts)
+    After the extra 1 day (> 24 hours past end_date), notice is completely excluded from the urgent banner.
     """
     all_notices = get_student_notices(student)
     urgent_items = []
@@ -681,8 +760,14 @@ def get_student_urgent_notices(student):
         try:
             info = calculate_deadline_info(notice)
             notice.deadline_info = info
-            if info.get('has_deadline') and not info.get('is_expired') and info.get('is_urgent'):
-                urgent_items.append(notice)
+            if info.get('has_deadline'):
+                # Phase 1: Within 2 days of deadline -> Active live countdown
+                if not info.get('is_expired') and info.get('is_urgent'):
+                    urgent_items.append(notice)
+                # Phase 2: Deadline passed, within 1 extra day -> Stopped timer with 'Assignment Date Over • Submission Closed'
+                elif info.get('is_extra_day'):
+                    urgent_items.append(notice)
+                # Phase 3: > 1 day past deadline -> Excluded completely!
             elif getattr(notice, 'priority', 'Normal') == 'Urgent':
                 urgent_items.append(notice)
         except Exception:

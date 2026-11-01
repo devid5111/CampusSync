@@ -16,6 +16,7 @@ from models import (
 from services.subject_service import get_subject_component_config
 from services.academic_service import get_academic_settings
 from services.academic_history_service import calculate_theory_internal_marks
+from services.notification_service import get_ist_now
 
 
 def get_faculty_assignment_notices(faculty_id, filter_by_cycle=True):
@@ -33,7 +34,7 @@ def get_faculty_assignment_notices(faculty_id, filter_by_cycle=True):
         category='Assignment Submit Date'
     ).order_by(Notification.created_at.desc()).all()
 
-    now = datetime.utcnow()
+    now = get_ist_now()
     result = []
     for n in notices:
         # Check active cycle filter
@@ -130,7 +131,7 @@ def get_assignment_submission_sheet(notification_id, faculty_id=None):
     submissions = AssignmentSubmission.query.filter_by(notification_id=notice.id).all()
     sub_map = {s.student_id: s for s in submissions}
 
-    now = datetime.utcnow()
+    now = get_ist_now()
     is_expired = bool(notice.end_date and now > notice.end_date)
 
     student_rows = []
@@ -212,7 +213,7 @@ def save_assignment_submissions(notification_id, faculty_id, submitted_student_i
 
     students = stud_query.all()
     submitted_set = set(int(sid) for sid in submitted_student_ids if str(sid).isdigit())
-    now = datetime.utcnow()
+    now = get_ist_now()
 
     updated_count = 0
 

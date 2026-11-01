@@ -148,9 +148,9 @@
                 </a>
             </div>
 
-            <!-- Urgent Assignment Cards with Live Countdown (<= 48 Hours remaining) -->
+            <!-- Urgent Assignment Cards with Live Countdown (<= 48 Hours remaining OR Extra 1 Day Grace Period) -->
             {% for n in notices %}
-                {% if n.deadline_info and n.deadline_info.has_deadline and n.deadline_info.is_urgent and not n.deadline_info.is_expired %}
+                {% if n.deadline_info and n.deadline_info.has_deadline and ( (n.deadline_info.is_urgent and not n.deadline_info.is_expired) or n.deadline_info.is_extra_day ) %}
                 <div class="urgent-assignment-card">
                     <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
                         <div class="d-flex align-items-center gap-2">
@@ -158,15 +158,26 @@
                             <h4 class="fw-bold m-0 text-white">{{ n.title }}</h4>
                         </div>
                         <span class="urgent-badge-pill">
-                            <i class="bi bi-exclamation-triangle-fill"></i> URGENT: DEADLINE APPROACHING
+                            {% if n.deadline_info.is_extra_day %}
+                                <i class="bi bi-x-circle-fill"></i> DEADLINE OVER / SUBMISSION CLOSED
+                            {% else %}
+                                <i class="bi bi-exclamation-triangle-fill"></i> URGENT: DEADLINE APPROACHING
+                            {% endif %}
                         </span>
                     </div>
 
-                    <!-- Digital Live Countdown Display -->
+                    <!-- Digital Live Countdown / Expiry Display -->
+                    {% if n.deadline_info.is_extra_day %}
+                    <div class="countdown-timer-display">
+                        <i class="bi bi-exclamation-octagon-fill me-2 text-danger"></i>
+                        <span class="countdown-text text-danger fw-bold">Assignment Date Over &bull; Submission Closed</span>
+                    </div>
+                    {% else %}
                     <div class="countdown-timer-display" data-deadline="{{ n.deadline_info.end_date_iso }}" data-seconds="{{ n.deadline_info.total_seconds }}">
                         <i class="bi bi-hourglass-split me-2 text-danger"></i>
                         <span class="countdown-text highlight">{{ n.deadline_info.countdown_str }}</span>
                     </div>
+                    {% endif %}
 
                     <div class="row g-3 small mb-3 text-white-50">
                         <div class="col-6 col-md-3">
@@ -243,7 +254,7 @@
                                             </strong>
                                         </div>
                                         {% if n.deadline_info and n.deadline_info.is_expired %}
-                                            <div class="text-danger fw-bold mt-1" style="font-size: 0.75rem;">❌ Submission Closed</div>
+                                            <div class="text-danger fw-bold mt-1" style="font-size: 0.75rem;">❌ Assignment Date Over &bull; Submission Closed</div>
                                         {% elif n.deadline_info and n.deadline_info.is_urgent %}
                                             <div class="text-danger fw-bold mt-1" style="font-size: 0.75rem;">⏳ {{ n.deadline_info.countdown_str }}</div>
                                         {% endif %}
@@ -302,20 +313,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
         function updateTick() {
             if (isNaN(remaining) || remaining <= 0) {
-                textElem.textContent = "00 Days : 00 Hours : 00 Mins : 00 Secs (Deadline Closed)";
+                textElem.innerHTML = '<span class="text-danger fw-bold"><i class="bi bi-exclamation-octagon-fill me-1"></i>Assignment Date Over &bull; Submission Closed</span>';
                 textElem.classList.remove('highlight');
-                textElem.classList.add('text-muted');
-                const urgentCard = el.closest('.urgent-assignment-card');
-                if (urgentCard) {
-                    // Smoothly fade out, slide up, and remove urgent banner
-                    setTimeout(() => {
-                        urgentCard.style.transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
-                        urgentCard.style.opacity = '0';
-                        urgentCard.style.transform = 'translateY(-20px)';
-                        setTimeout(() => {
-                            urgentCard.remove();
-                        }, 800);
-                    }, 1500);
+                const badge = el.closest('.urgent-assignment-card')?.querySelector('.urgent-badge-pill');
+                if (badge) {
+                    badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> DEADLINE OVER / SUBMISSION CLOSED';
                 }
                 return;
             }

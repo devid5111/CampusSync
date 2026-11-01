@@ -94,7 +94,11 @@
                             </div>
                             <span class="badge" style="background: rgba(239, 68, 68, 0.25); color: #fca5a5; border: 1px solid #ef4444; font-size: 0.8rem; padding: 0.4rem 0.8rem;">
                                 {% if un.deadline_info and un.deadline_info.has_deadline %}
-                                    <i class="bi bi-clock-history me-1"></i>DEADLINE APPROACHING (&le; 2 DAYS)
+                                    {% if un.deadline_info.is_extra_day %}
+                                        <i class="bi bi-x-circle-fill me-1"></i>DEADLINE OVER / SUBMISSION CLOSED
+                                    {% else %}
+                                        <i class="bi bi-clock-history me-1"></i>DEADLINE APPROACHING (&le; 2 DAYS)
+                                    {% endif %}
                                 {% else %}
                                     <i class="bi bi-exclamation-triangle-fill me-1"></i>URGENT ACTION REQUIRED
                                 {% endif %}
@@ -102,9 +106,15 @@
                         </div>
                         {% if un.deadline_info and un.deadline_info.has_deadline %}
                         <div class="p-3 my-2 rounded-3 text-center" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);">
-                            <span class="text-danger fw-bold fs-5 live-countdown-timer" data-seconds="{{ un.deadline_info.total_seconds }}">
-                                ⏳ {{ un.deadline_info.countdown_str }}
-                            </span>
+                            {% if un.deadline_info.is_extra_day %}
+                                <span class="text-danger fw-bold fs-5">
+                                    <i class="bi bi-exclamation-octagon-fill me-2"></i>Assignment Date Over &bull; Submission Closed
+                                </span>
+                            {% else %}
+                                <span class="text-danger fw-bold fs-5 live-countdown-timer" data-seconds="{{ un.deadline_info.total_seconds }}">
+                                    ⏳ {{ un.deadline_info.countdown_str }}
+                                </span>
+                            {% endif %}
                             <div class="small text-white-50 mt-1">Due: {{ un.end_date.strftime('%d %b %Y, %I:%M %p') if un.end_date else 'Soon' }} &bull; Subject: {{ un.subject.subject_name if un.subject and un.subject.subject_name else 'General' }} &bull; By: <strong class="text-white">{{ un.author_name or 'College Administration' }}</strong></div>
                         </div>
                         {% else %}
@@ -294,18 +304,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
         function tick() {
             if (remaining <= 0) {
-                el.innerHTML = '<span class="text-danger fw-bold"><i class="bi bi-clock-history me-1"></i>00d : 00h : 00m : 00s (Deadline Closed)</span>';
-                const bannerCard = el.closest('.urgent-dashboard-banner');
-                if (bannerCard) {
-                    // Smoothly fade out, slide up, and remove banner from dashboard
-                    setTimeout(() => {
-                        bannerCard.style.transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
-                        bannerCard.style.opacity = '0';
-                        bannerCard.style.transform = 'translateY(-20px)';
-                        setTimeout(() => {
-                            bannerCard.remove();
-                        }, 800);
-                    }, 1500);
+                el.innerHTML = '<span class="text-danger fw-bold"><i class="bi bi-exclamation-octagon-fill me-1"></i>Assignment Date Over &bull; Submission Closed</span>';
+                const badge = el.closest('.urgent-dashboard-banner')?.querySelector('.badge');
+                if (badge) {
+                    badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i>DEADLINE OVER / SUBMISSION CLOSED';
                 }
                 return;
             }
