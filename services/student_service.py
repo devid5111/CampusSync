@@ -43,9 +43,11 @@ def get_all_students_sorted(semester=None):
 
     from models import InternalMark
 
-    # Fetch set of student IDs that have saved internal marks
-    marks_student_ids = set(
-        rec.student_id for rec in InternalMark.query.with_entities(InternalMark.student_id).all()
+    # Fetch set of (student_id, semester) pairs that have saved internal marks
+    # Medal badge only shows if faculty has saved marks for the student's CURRENT semester
+    current_sem_marks_pairs = set(
+        (rec.student_id, rec.semester)
+        for rec in InternalMark.query.with_entities(InternalMark.student_id, InternalMark.semester).all()
     )
 
     students = query.order_by(db.cast(Student.roll_number, db.Integer).asc()).all()
@@ -65,7 +67,7 @@ def get_all_students_sorted(semester=None):
             "division": s.division,
             "academic_year": s.academic_year,
             "status": s.status,
-            "has_marks": (s.id in marks_student_ids)
+            "has_marks": ((s.id, s.semester) in current_sem_marks_pairs)
         })
     return student_list
 

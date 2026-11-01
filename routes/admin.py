@@ -113,8 +113,10 @@ def api_get_students():
                 (Student.full_name.ilike(f"%{query_param}%"))
             ).order_by(Student.semester.asc(), db.cast(Student.roll_number, db.Integer).asc()).all()
 
-            marks_student_ids = set(
-                rec.student_id for rec in InternalMark.query.with_entities(InternalMark.student_id).all()
+            # Medal badge only shows if faculty has saved marks for student's current semester
+            current_sem_marks_pairs = set(
+                (rec.student_id, rec.semester)
+                for rec in InternalMark.query.with_entities(InternalMark.student_id, InternalMark.semester).all()
             )
 
             student_list = []
@@ -132,7 +134,7 @@ def api_get_students():
                     "division": s.division,
                     "academic_year": s.academic_year,
                     "status": s.status,
-                    "has_marks": (s.id in marks_student_ids)
+                    "has_marks": ((s.id, s.semester) in current_sem_marks_pairs)
                 })
         else:
             student_list = get_all_students_sorted(semester=semester)
