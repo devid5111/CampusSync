@@ -1,14 +1,49 @@
+"""
+================================================================================
+CAMPUSSYNC ERP - MAIN APPLICATION CONTROLLER & BOOTSTRAPPER (app.py)
+================================================================================
+આ ફાઇલ આખા CampusSync પ્રોજેક્ટનું મુખ્ય એન્ટ્રી પોઇન્ટ (Main Entry Point) છે.
+અહીં નીચે મુજબની મહત્વની બાબતો કોન્ફિગર કરવામાં આવી છે:
+
+1. Flask App Initialization & Middleware:
+   - Werkzeug ProxyFix (Railway/Cloudflare રિવર્સ પ્રોક્સી પર સાચા Client IP અને HTTPS માટે)
+   - Flask-Compress (HTML/CSS/JS/JSON નું ઓટોમેટેડ Gzip/Brotli કમ્પ્રેશન)
+   
+2. સિક્યુરિટી પોલિસી (Security Policies):
+   - Enforce HTTPS (પ્રોડક્શનમાં http ને https પર રીડાયરેક્ટ કરે છે)
+   - 30-Minute Inactivity Auto-Logout (30 મિનિટ કંઈ કામ ન થાય તો સુરક્ષા માટે ઓટો લોગઆઉટ)
+   - Cache-Control Headers (લોગઆઉટ પછી કોઈ 'Back' બટન દબાવીને ડેશબોર્ડ ન જોઈ શકે)
+
+3. બ્લૂપ્રિન્ટ્સ (Modular Route Blueprints):
+   - auth_bp    : Login / Logout / Forgot Password (Admin, Faculty, Student)
+   - admin_bp   : Admin Dashboard, Faculty/Student Management, Results, Reports
+   - faculty_bp : Faculty Attendance, QR Code Generation, Marks Entry, Notices
+   - student_bp : Student Dashboard, QR Attendance Scanning, Results, Notices
+   - alumni_bp  : Old / Graduated Students Directory & Archives
+   - api_bp     : Mobile REST API & Live Dynamic Notification Bell Feed
+
+4. ઓટોમેટેડ ડેટાબેઝ માઇગ્રેશન (run_all_database_migrations):
+   - સર્વર અથવા લોકલ જ્યારે પણ રન થાય ત્યારે ટેબલ્સ અને જરૂરી કોલમ્સ આપમેળે બની જાય છે.
+
+5. File Serving & Utility Routes:
+   - /uploads/* universal file handler (ફોટા અને દસ્તાવેજો માટે)
+   - /test-email (Brevo API દ્વારા ઈમેલ ડિલિવરી ચેક કરવા માટે)
+   - Error Handlers (404 Not Found, 500 Server Error, 403 Forbidden)
+================================================================================
+"""
+
 from flask import Flask, send_from_directory, session, request, redirect, url_for, flash
 import os
 import traceback
 from datetime import datetime
 from sqlalchemy import inspect
 
+# કન્ફિગરેશન અને એક્સટેન્શન્સ (Database & Mail Objects)
 from config import Config
 from extensions import db, mail
 from utils.db import test_connection
 
-# Import Blueprints
+# તમામ રોલ-વાઇઝ મોડ્યુલર બ્લૂપ્રિન્ટ્સ (Route Handlers)
 from routes.auth import auth_bp
 from routes.admin import admin_bp
 from routes.faculty import faculty_bp
@@ -16,11 +51,14 @@ from routes.student import student_bp
 from routes.alumni import alumni_bp
 from routes.api import api_bp
 
-# Initialize Flask application
+# ------------------------------------------------------------------------------
+# 1. FLASK APPLICATION INITIALIZATION
+# ------------------------------------------------------------------------------
 app = Flask(__name__)
 
-# Apply ProxyFix for reverse proxy deployments (Railway, Cloudflare, Nginx)
-# Accurately detects HTTPS protocol and client IP via X-Forwarded-* headers
+# [ProxyFix Middleware]: Railway / Cloudflare / Nginx રિવર્સ પ્રોક્સી હેઠળ જ્યારે
+# પ્રોજેક્ટ લાઈવ ચાલે, ત્યારે યુઝરનો સાચો Client IP અને HTTPS પ્રોટોકોલ
+# X-Forwarded-* હેડર્સ દ્વારા એક્યુરેટ રીતે ઓળખવા માટે આ જરૂરી છે.
 from werkzeug.middleware.proxy_fix import ProxyFix
 app.wsgi_app = ProxyFix(
     app.wsgi_app,
@@ -30,12 +68,13 @@ app.wsgi_app = ProxyFix(
     x_prefix=1
 )
 
-# Load configuration settings (Secret key, Database credentials)
+# .env ફાઇલમાંથી સિક્રેટ કી અને ડેટાબેઝ ક્રેડેન્શિયલ્સ લોડ કરે છે
 app.config.from_object(Config)
 db.init_app(app)
 mail.init_app(app)
 
-# High-Performance Compression: automatically compress HTML, CSS, JS, and JSON via Gzip/Brotli
+# [High-Performance Compression]: પેજ લોડિંગ સ્પીડ વધારવા માટે HTML, CSS, JS, JSON
+# ડેટાને બ્રાઉઝર પર મોકલતા પહેલાં Gzip/Brotli દ્વારા કમ્પ્રેસ કરે છે.
 try:
     from flask_compress import Compress
     Compress(app)
@@ -43,12 +82,15 @@ except ImportError:
     pass
 
 # ------------------------------------------------------------------------------
-# Security: Enforce HTTPS in Production Deployments
+# 2. SECURITY: ENFORCE HTTPS IN PRODUCTION DEPLOYMENTS
 # ------------------------------------------------------------------------------
 @app.before_request
 def enforce_https():
-    """Redirect plain HTTP requests to HTTPS on production deployments only."""
-    # Never enforce HTTPS on localhost, 127.0.0.1, or local area network IPs
+    """
+    પ્રોડક્શન સર્વર (દા.ત. Railway) પર સુરક્ષા માટે પ્લેન HTTP રિકવેસ્ટને
+    આપમેળે HTTPS (SSL Secure) પર રીડાયરેક્ટ કરે છે.
+    લોકલ ડેવલપમેન્ટ (localhost / 127.0.0.1) માં આ ડિસેબલ રહે છે જેથી એરર ન આવે.
+    """
     host = request.host.split(':')[0].lower()
     if host in ('localhost', '127.0.0.1', '0.0.0.0') or host.startswith('192.168.') or host.startswith('10.') or host.endswith('.local'):
         return
@@ -60,16 +102,17 @@ def enforce_https():
 
 
 # ------------------------------------------------------------------------------
-# Security: Session Inactivity Timeout (30 Minutes)
+# 3. SECURITY: 30-MINUTE SESSION INACTIVITY TIMEOUT
 # ------------------------------------------------------------------------------
 @app.before_request
 def enforce_session_inactivity_timeout():
     """
-    Enforces a 30-minute inactivity session expiry.
-    If 30 minutes pass without requests from the logged-in user, clears session
-    and redirects user to the respective login page.
+    સેશન ઇનએક્ટિવિટી સિક્યુરિટી:
+    જો કોઈ યુઝર (Admin, Faculty, Student) પોર્ટલ ખોલીને 30 મિનિટ સુધી
+    કોઈ એક્ટિવિટી ન કરે, તો સિક્યુરિટી ખાતર સેશન ક્લીયર કરીને તેને
+    આપમેળે લોગિન પેજ પર મોકલી દે છે.
     """
-    # Skip static files, assets, and uploaded media routes
+    # સ્ટેટિક ફાઇલ્સ અને અપલોડેડ ઇમેજીસ માટે ટાઇમઆઉટ ચેક સ્કીપ કરવો
     if request.endpoint == 'static' or request.path.startswith('/static') or request.path.startswith('/assets') or request.path.startswith('/uploads'):
         return
 
@@ -77,13 +120,15 @@ def enforce_session_inactivity_timeout():
     is_faculty = 'faculty_id' in session
     is_student = 'student_id' in session
 
+    # જો કોઈ યુઝર લોગિન જ ન હોય તો બહાર નીકળી જવું
     if not (is_admin or is_faculty or is_student):
         return
 
     now_ts = datetime.utcnow().timestamp()
     last_active = session.get('last_active')
-    TIMEOUT_SECONDS = 1800  # 30 minutes (1800 seconds)
+    TIMEOUT_SECONDS = 1800  # 30 મિનિટ = 1800 સેકન્ડ
 
+    # જો 30 મિનિટથી વધુ સમય થઈ ગયો હોય તો સેશન ક્લીયર કરી લોગઆઉટ કરો
     if last_active and (now_ts - last_active > TIMEOUT_SECONDS):
         target_login = 'student_login'
         if is_admin:
@@ -95,23 +140,23 @@ def enforce_session_inactivity_timeout():
         flash("Your session has expired due to 30 minutes of inactivity. Please log in again.", "warning")
         return redirect(url_for(target_login, expired='1'))
 
-    # Update activity timestamp and keep session permanent
+    # યુઝર સક્રિય છે, તેથી છેલ્લી એક્ટિવિટીનો સમય અપડેટ કરો
     session['last_active'] = now_ts
     session.permanent = True
 
 
 # ------------------------------------------------------------------------------
-# Security & Performance: Cache-Control Headers
+# 4. SECURITY & SPEED: ANTI-BACK-BUTTON CACHE-CONTROL HEADERS
 # ------------------------------------------------------------------------------
 @app.after_request
 def add_cache_control_headers(response):
     """
-    Prevents browser from caching authenticated/dynamic pages.
-    When a logged-out user clicks the browser 'Back' button, the browser is
-    forced to re-request the page from the server, preventing dashboard display.
-
-    Static assets and uploaded media files are cached by the browser for high performance
-    and instant sub-millisecond subsequent loads.
+    એન્ટી-બેક-બટન પ્રોટેક્શન:
+    ડાયનેમિક ડેશબોર્ડ પેજીસ માટે no-cache હેડર્સ સેટ કરે છે જેથી યુઝર લોગઆઉટ
+    થયા પછી જો બ્રાઉઝરનું 'Back' બટન દબાવે તો કેશ્ડ પેજ ન દેખાય અને સર્વર
+    તેને સીધું લોગિન પેજ પર રીડાયરેક્ટ કરે.
+    
+    તેની સામે Static CSS/JS અને Uploads માટે 24-Hour Cache રાખે છે જેથી સાઇટ સુપર-ફાસ્ટ લોડ થાય.
     """
     if request.path.startswith('/static') or request.path.startswith('/assets') or request.path.startswith('/uploads'):
         response.headers["Cache-Control"] = "public, max-age=86400"
@@ -122,27 +167,39 @@ def add_cache_control_headers(response):
     response.headers["Expires"] = "0"
     return response
 
-# Global context processor to inject college settings dynamically into all templates
+
+# ------------------------------------------------------------------------------
+# 5. GLOBAL CONTEXT PROCESSOR (COLLEGE SETTINGS INJECTION)
+# ------------------------------------------------------------------------------
 from services.college_service import get_college_settings
 
 @app.context_processor
 def inject_global_college():
-    """Injects dynamic college settings into all Jinja templates across the entire website."""
+    """
+    ગ્લોબલ કોન્ટેક્સ્ટ પ્રોસેસર:
+    કોલેજનું નામ, લોગો, એડ્રેસ, ઈમેલ વગેરે ડેટાબેઝમાંથી લાવીને આખા પ્રોજેક્ટના
+    દરેક HTML ટેમ્પલેટમાં ઓટોમેટિક ઉપલબ્ધ બનાવે છે (જેથી વારંવાર ક્વેરી ન કરવી પડે).
+    """
     try:
         college = get_college_settings()
     except Exception:
         college = None
     return dict(college=college)
 
-# Register Blueprints
-app.register_blueprint(auth_bp)
-app.register_blueprint(admin_bp)
-app.register_blueprint(faculty_bp)
-app.register_blueprint(student_bp)
-app.register_blueprint(alumni_bp)
-app.register_blueprint(api_bp)
 
-# Register endpoint aliases for backward compatibility with existing templates calling url_for('endpoint_name')
+# ------------------------------------------------------------------------------
+# 6. BLUEPRINT REGISTRATION
+# ------------------------------------------------------------------------------
+# આખા પ્રોજેક્ટના જુદા જુદા મોડ્યુલ્સને Flask App સાથે રજીસ્ટર કરીએ છીએ:
+app.register_blueprint(auth_bp)      # લોગિન, પાસવર્ડ રીસેટ, ઓટીપી
+app.register_blueprint(admin_bp)     # પ્રિન્સિપાલ / એડમિન મેનેજમેન્ટ
+app.register_blueprint(faculty_bp)   # ફેકલ્ટી હાજરી, માર્ક્સ અને લેક્ચર
+app.register_blueprint(student_bp)   # સ્ટુડન્ટ પોર્ટલ, રિઝલ્ટ, ક્યુઆર સ્કેન
+app.register_blueprint(alumni_bp)    # પાસ થયેલા ઓલ્ડ સ્ટુડન્ટ્સ ડિરેક્ટરી
+app.register_blueprint(api_bp)       # મોબાઇલ એપ્લિકેશન અને નોટિફિકેશન API
+
+# જુના ટેમ્પલેટ્સમાં રહેલા શોર્ટ એન્ડપોઇન્ટ નામો (દા.ત. url_for('admin_login'))
+# સાથે બેકવર્ડ કમ્પેટિબિલિટી જાળવી રાખવા માટે એલિયાસ રજીસ્ટ્રેશન લૂપ:
 for rule in list(app.url_map.iter_rules()):
     if '.' in rule.endpoint:
         short_ep = rule.endpoint.split('.', 1)[1]
@@ -150,12 +207,17 @@ for rule in list(app.url_map.iter_rules()):
             app.view_functions[short_ep] = app.view_functions[rule.endpoint]
             app.add_url_rule(rule.rule, endpoint=short_ep, view_func=app.view_functions[rule.endpoint], methods=rule.methods)
 
-# Auto-create tables and perform resilient database migrations
+
+# ------------------------------------------------------------------------------
+# 7. AUTOMATED RESILIENT DATABASE MIGRATION ENGINE
+# ------------------------------------------------------------------------------
 def run_all_database_migrations():
     """
-    Comprehensive, resilient database schema migration for MySQL.
-    Every single table and column is checked and altered in its own isolated try-except block,
-    ensuring that errors in one table never cascade or abort migrations in other tables.
+    ઓટોમેટેડ ડેટાબેઝ સ્કીમા માઇગ્રેશન એન્જિન:
+    પ્રોજેક્ટ જ્યારે પણ સ્ટાર્ટ થાય (Railway સર્વર કે લોકલ PC પર), ત્યારે
+    દરેક ટેબલ અને નવી કોલમ્સ ચેક કરીને આપમેળે બનાવી દે છે.
+    દરેક બ્લોક આઈસોલેટેડ try-except માં છે જેથી એકમાં એરર આવે તો પણ બાકીના
+    ટેબલ્સ અટક્યા વગર સહેલાઈથી માઈગ્રેટ થઈ જાય.
     """
     import models
     from models import (
@@ -166,6 +228,7 @@ def run_all_database_migrations():
         LectureAttendanceSession, LectureAttendanceStudent, AttendanceSecurityAlert
     )
 
+    # સર્વર પર જરૂરી તમામ અપલોડ ફોલ્ડર્સ (Upload Folders) આપમેળે ક્રિએટ કરે છે
     upload_dirs = [
         'admin', 'assignments', 'college', 'excel', 'faculty',
         'gallery', 'homepage', 'notices', 'notifications', 'students', 'student'
@@ -175,6 +238,7 @@ def run_all_database_migrations():
 
     report = {"migrated": [], "errors": []}
 
+    # SQLAlchemy મોડેલ્સ મુજબ ટેબલ્સ બનાવે છે
     try:
         db.create_all()
     except Exception as e:
@@ -185,7 +249,7 @@ def run_all_database_migrations():
     except Exception:
         pass
 
-    # 1. PRIORITY 1: Notifications table columns (especially target_student_id)
+    # [1. નોટિફિકેશન્સ અને અનરેડ ટ્રેકિંગ ટેબલ (Notifications & Reads)]:
     try:
         from services.notification_service import ensure_notification_columns, ensure_notification_reads_table
         ensure_notification_columns()
@@ -194,7 +258,7 @@ def run_all_database_migrations():
     except Exception as e:
         report["errors"].append(f"ensure_notification_columns: {e}")
 
-    # 2. attendance_security_alerts table
+    # [2. ક્યુઆર સિક્યુરિટી એલર્ટ્સ ટેબલ (Anti-Proxy / Geofence Security Alerts)]:
     try:
         with db.engine.connect() as conn:
             conn.execute(db.text("""
@@ -221,7 +285,7 @@ def run_all_database_migrations():
     except Exception as e:
         report["errors"].append(f"attendance_security_alerts: {e}")
 
-    # 3. students table columns and constraints
+    # [3. સ્ટુડન્ટ્સ ટેબલ અને ડિવાઇસ બાઇન્ડિંગ કોલમ્સ (Students & Device Fingerprint)]:
     try:
         with db.engine.connect() as conn:
             s_existing = set()
@@ -248,7 +312,7 @@ def run_all_database_migrations():
                     except Exception as err:
                         report["errors"].append(f"students.{col_name}: {err}")
 
-            # Index migrations for students
+            # યુનિક ઇન્ડેક્સ સુનિશ્ચિત કરે છે કે એક સેમેસ્ટર અને શૈક્ષણિક વર્ષમાં એક રોલ નંબર એક જ વાર આવે
             try:
                 res_idx = conn.execute(db.text("SHOW INDEX FROM students")).fetchall()
                 idx_names = {str(r[2]) for r in res_idx if len(r) > 2}
@@ -278,7 +342,7 @@ def run_all_database_migrations():
     except Exception as e:
         report["errors"].append(f"students_table: {e}")
 
-    # 4. Default Administrator auto-seed
+    # [4. ડિફોલ્ટ એડમિન એકાઉન્ટ ઓટો-સીડ (Default Administrator Seed)]:
     try:
         if Admin.query.first() is None:
             from werkzeug.security import generate_password_hash
@@ -296,7 +360,7 @@ def run_all_database_migrations():
         db.session.rollback()
         report["errors"].append(f"admin_autoseed: {e}")
 
-    # 5. academic_settings table
+    # [5. શૈક્ષણિક સેટિંગ્સ (Academic Settings - Students per Division)]:
     try:
         with db.engine.connect() as conn:
             existing = set()
@@ -315,7 +379,7 @@ def run_all_database_migrations():
     except Exception as e:
         report["errors"].append(f"academic_settings_block: {e}")
 
-    # 6. college_settings table
+    # [6. કોલેજ જિયોફેન્સ સેટિંગ્સ (College Geofence Lat/Long & Timings)]:
     try:
         with db.engine.connect() as conn:
             existing = set()
@@ -346,7 +410,7 @@ def run_all_database_migrations():
     except Exception as e:
         report["errors"].append(f"college_settings_block: {e}")
 
-    # 7. subjects table
+    # [7. વિષયોની માર્ક્સ સ્કીમ (Subjects Internal & External Marks Scheme)]:
     try:
         with db.engine.connect() as conn:
             existing = set()
@@ -374,7 +438,7 @@ def run_all_database_migrations():
     except Exception as e:
         report["errors"].append(f"subjects_block: {e}")
 
-    # 8. internal_marks table
+    # [8. ઇન્ટરનલ માર્ક્સ કોમ્પોનન્ટ્સ (Theory & Practical Evaluation Breakdown)]:
     try:
         with db.engine.connect() as conn:
             existing = set()
@@ -411,7 +475,7 @@ def run_all_database_migrations():
     except Exception as e:
         report["errors"].append(f"internal_marks_block: {e}")
 
-    # 9. Password reset OTP columns for students, faculty, admins
+    # [9. પાસવર્ડ રીસેટ OTP અને બ્રુટ-ફોર્સ લોકઆઉટ (OTP Reset Columns)]:
     for tbl_name in ['students', 'faculty', 'admins']:
         try:
             with db.engine.connect() as conn:
@@ -440,7 +504,7 @@ def run_all_database_migrations():
         except Exception as e:
             report["errors"].append(f"otp_{tbl_name}: {e}")
 
-    # 10. gallery_items views_count
+    # [10. કેમ્પસ ગેલેરી વ્યુ કાઉન્ટર (Gallery Items View Counter)]:
     try:
         with db.engine.connect() as conn:
             existing = set()
@@ -459,7 +523,7 @@ def run_all_database_migrations():
     except Exception as e:
         report["errors"].append(f"gallery_items_block: {e}")
 
-    # 11. lecture_attendance_sessions
+    # [11. લેક્ચર હાજરી સેશન્સ અને ક્યુઆર ટોકન (Lecture Attendance Sessions)]:
     try:
         with db.engine.connect() as conn:
             existing = set()
@@ -490,7 +554,7 @@ def run_all_database_migrations():
     except Exception as e:
         report["errors"].append(f"lecture_attendance_sessions_block: {e}")
 
-    # 12. lecture_attendance_students
+    # [12. વિદ્યાર્થીઓની ક્યુઆર હાજરી અને જિયોફેન્સ વેરિફિકેશન (Lecture Attendance Students)]:
     try:
         with db.engine.connect() as conn:
             existing = set()
@@ -521,7 +585,7 @@ def run_all_database_migrations():
     except Exception as e:
         report["errors"].append(f"lecture_attendance_students_block: {e}")
 
-    # 13. Default official public notices auto-seed
+    # [13. ડિફોલ્ટ ઓફિશિયલ કેમ્પસ પરિપત્રો (Official Public Notices Auto-Seed)]:
     try:
         from models import Notification
         pub_count = Notification.query.filter(
@@ -570,7 +634,7 @@ def run_all_database_migrations():
         db.session.rollback()
         report["errors"].append(f"default_notices_seed: {e}")
 
-    # 14. Reset student device fingerprints as requested by admin
+    # [14. વિદ્યાર્થીઓના ડિવાઇસ બાઇન્ડિંગ રીસેટ યુટિલિટી (Device Reset Utility)]:
     try:
         with db.engine.connect() as conn:
             conn.execute(db.text("UPDATE students SET device_fingerprint = NULL, device_model = NULL, device_bound_at = NULL, device_reset_allowed = 1 WHERE device_fingerprint IS NOT NULL"))
@@ -579,7 +643,7 @@ def run_all_database_migrations():
     except Exception as e:
         report["errors"].append(f"reset_student_devices: {e}")
 
-    # 15. Ensure Semester 5 internal marks and archive akash raval (BCA15226000041) to Old Students
+    # [15. સેમેસ્ટર 5 માર્ક્સ અને આર્કાઇવ્ડ એલ્યુમની રેકોર્ડ (Old Students Demonstration Archive)]:
     try:
         from models import Student, Subject, InternalMark, ResultDeclaration, Faculty, FacultySubjectAssignment, ArchivedStudent, ArchivedInternalMark
         import json
@@ -597,7 +661,7 @@ def run_all_database_migrations():
             st.division = target_div
             st.course = 'BCA'
             st.enrollment_no = target_enrollment
-            st.status = 'Inactive'  # Moved to Old Students (Inactive in active table)
+            st.status = 'Inactive'  # પાસ થઈ ગયેલા ઓલ્ડ સ્ટુડન્ટ્સ ટેબલમાં ખસેડવામાં આવેલ
             st.academic_year = '2024-25'
             st.mobile_number = '9328976261'
 
@@ -682,7 +746,7 @@ def run_all_database_migrations():
                     else:
                         decl.is_declared = True
 
-            # Create or update ArchivedStudent record
+            # ArchivedStudent રેકોર્ડ અપડેટ
             arch_st = ArchivedStudent.query.filter(
                 (ArchivedStudent.enrollment_no == target_enrollment) |
                 (ArchivedStudent.email == st.email)
@@ -715,7 +779,7 @@ def run_all_database_migrations():
                 arch_st.academic_year = '2024-25'
                 arch_st.status = 'Archived'
 
-            # Sync Sem 5 marks into ArchivedInternalMark (2024-25)
+            # ArchivedInternalMark ટેબલમાં માર્ક્સ ટ્રાન્સફર
             for s in subs:
                 spec = marks_specs.get(s.subject_code)
                 if not spec:
@@ -755,7 +819,10 @@ def run_all_database_migrations():
     return report
 
 
-# Run schema migration during application startup
+# ------------------------------------------------------------------------------
+# 8. STARTUP SCHEMA MIGRATION TRIGGER
+# ------------------------------------------------------------------------------
+# એપ્લિકેશન શરૂ થતી વખતે જ તમામ માઇગ્રેશન એકવાર ચલાવી લે છે
 with app.app_context():
     try:
         migration_results = run_all_database_migrations()
@@ -764,7 +831,7 @@ with app.app_context():
         print(f"Database migration top-level error: {e}")
         traceback.print_exc()
 
-# Dedicated endpoint to trigger/verify database migrations anytime
+# ગમે ત્યારે મેન્યુઅલી બ્રાઉઝરમાંથી માઇગ્રેશન ટ્રિગર કરવા માટેનું ડેડિકેટેડ એન્ડપોઇન્ટ
 @app.route('/system/migrate-db', methods=['GET', 'POST'])
 def trigger_database_migration():
     """Manual or automated endpoint to run database migrations on Railway."""
@@ -777,7 +844,9 @@ def trigger_database_migration():
         "errors": res["errors"]
     }
 
-# Test Database Connection on server startup
+# ------------------------------------------------------------------------------
+# 9. DATABASE CONNECTION HEALTH CHECK ON STARTUP
+# ------------------------------------------------------------------------------
 print("--------------------------------------------------")
 print("Initializing CampusSync Application Backend...")
 if test_connection():
@@ -786,15 +855,23 @@ else:
     print("WARNING: Could not connect to MySQL database. Please check your .env settings or import database/campussync.sql.")
 print("--------------------------------------------------")
 
-# Serve assets fallback handler
+
+# ------------------------------------------------------------------------------
+# 10. STATIC ASSETS & UNIVERSAL FILE SERVING HANDLERS
+# ------------------------------------------------------------------------------
 @app.route('/assets/<path:filename>')
 def serve_assets(filename):
+    """Fallback handler for static assets (/assets/...)"""
     static_dir = os.path.join(app.root_path, 'static')
     return send_from_directory(static_dir, filename)
 
-# Universal uploads file serving handler
 @app.route('/uploads/<path:filename>', endpoint='global_serve_uploads')
 def global_serve_uploads(filename):
+    """
+    યુનિવર્સલ ફાઇલ સર્વિંગ હેન્ડલર:
+    વિદ્યાર્થીઓના પ્રોફાઇલ ફોટા, ફેકલ્ટી ફોટા, નોટિસ દસ્તાવેજો (PDF/Word/Images)
+    વગેરેને બ્રાઉઝર પર સુરક્ષિત રીતે ડિલિવર કરે છે.
+    """
     uploads_dir = os.path.join(app.root_path, 'uploads')
     target_path = os.path.join(uploads_dir, filename)
     if not os.path.exists(target_path):
@@ -807,15 +884,17 @@ def global_serve_uploads(filename):
             if os.path.exists(alt):
                 return send_from_directory(os.path.join(uploads_dir, 'student'), filename[len('students/'):])
     return send_from_directory(uploads_dir, filename)
+
+
 # ------------------------------------------------------------------------------
-# Test Email Route (Brevo API Production Verification)
+# 11. BREVO EMAIL API PRODUCTION TEST ROUTE
 # ------------------------------------------------------------------------------
 @app.route('/test-email')
 @app.route('/test-mail')
 def test_email_route():
     """
-    Direct browser test endpoint to verify Brevo HTTPS API email delivery on Railway.
-    Usage: /test-email or /test-email?to=your_email@gmail.com
+    Brevo HTTPS API દ્વારા ઈમેલ ડિલિવરી ચકાસવા માટેનું ટેસ્ટ એન્ડપોઇન્ટ.
+    બ્રાઉઝરમાં /test-email ખોલીને લાઈવ ચેક કરી શકાય છે.
     """
     to_email = request.args.get('to', app.config.get('MAIL_DEFAULT_SENDER', 'devidparmar8954@gmail.com'))
     from mail.brevo_service import is_brevo_configured, send_brevo_email
@@ -875,15 +954,20 @@ def test_email_route():
         </div>
         """, 400
 
-# Production Error Handlers
+
+# ------------------------------------------------------------------------------
+# 12. HTTP PRODUCTION ERROR HANDLERS
+# ------------------------------------------------------------------------------
 from flask import render_template
 
 @app.errorhandler(404)
 def handle_404_error(e):
+    """પેજ ન મળે ત્યારે યુઝર-ફ્રેન્ડલી 404 કસ્ટમ પેજ દર્શાવે છે."""
     return render_template('public/404.html'), 404
 
 @app.errorhandler(500)
 def handle_500_error(e):
+    """સર્વર એરર આવે ત્યારે રોલબેક કરીને સુંદર 500 પેજ દર્શાવે છે."""
     try:
         db.session.rollback()
     except Exception:
@@ -894,10 +978,15 @@ def handle_500_error(e):
 
 @app.errorhandler(403)
 def handle_403_error(e):
+    """પરમિશન ન હોય તેવા અનઓથોરાઇઝ્ડ એક્સેસ માટે 403 Forbidden પેજ."""
     return render_template('public/403.html'), 403
 
-# Run Flask server
+
+# ------------------------------------------------------------------------------
+# 13. SERVER RUNNER
+# ------------------------------------------------------------------------------
 if __name__ == '__main__':
+    # પોર્ટ અને હોસ્ટ એન્વાયર્નમેન્ટ વેરીએબલ્સમાંથી (Railway/Local) મેળવે છે
     port = int(os.environ.get('PORT', 5000))
     host = os.environ.get('HOST', '0.0.0.0')
     debug = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 't')
