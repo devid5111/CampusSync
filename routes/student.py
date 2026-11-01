@@ -343,15 +343,16 @@ def student_results():
     import json
     from models import Subject, InternalMark
 
-    # Filter parameters
-    selected_year = request.args.get('academic_year', '2026-27').strip()
-    try:
-        selected_sem = int(request.args.get('semester', student.semester or 5))
-    except (ValueError, TypeError):
-        selected_sem = student.semester or 5
+    # Current student semester
+    st_sem = student.semester or 1
 
-    # Fetch subjects for the selected semester
-    subjects = Subject.query.filter_by(semester=selected_sem).all()
+    # Filter parameters: default to latest completed semester (or 1 if in Sem 1)
+    default_sem = (st_sem - 1) if st_sem > 1 else 1
+    req_sem = request.args.get('semester')
+    try:
+        selected_sem = int(req_sem) if req_sem is not None else default_sem
+    except (ValueError, TypeError):
+        selected_sem = default_sem
 
     # Query marks for this student
     marks_records = InternalMark.query.filter_by(
@@ -359,6 +360,15 @@ def student_results():
         semester=selected_sem
     ).all()
     marks_by_subject = {m.subject_id: m for m in marks_records}
+
+    # Detect the actual academic year for the selected semester
+    if marks_records and marks_records[0].academic_year:
+        selected_year = marks_records[0].academic_year
+    else:
+        selected_year = request.args.get('academic_year', '2026-27').strip()
+
+    # Fetch subjects for the selected semester
+    subjects = Subject.query.filter_by(semester=selected_sem).all()
 
     # Also query across all semesters to know which semesters have marks
     all_student_marks = InternalMark.query.filter_by(student_id=student.id).all()
@@ -431,11 +441,20 @@ def student_results():
     overall_percentage = round((total_obtained / total_max) * 100, 1) if (total_max > 0 and total_obtained > 0) else 0.0
 
     available_years = ['2026-27', '2025-26', '2024-25']
-    available_semesters = [1, 2, 3, 4, 5, 6]
+    # Active students can only navigate up to their current enrolled semester
+    available_semesters = list(range(1, st_sem + 1))
 
     from services.result_declaration_service import is_result_declared
     from services.college_service import get_college_settings
-    is_declared = is_result_declared(selected_year, selected_sem, student.division)
+
+    # Ongoing semester (selected_sem >= st_sem) results are not declared yet
+    if selected_sem >= st_sem:
+        is_declared = False
+    else:
+        is_declared = is_result_declared(selected_year, selected_sem, student.division)
+        if not is_declared and len(marks_records) > 0:
+            is_declared = True
+
     college = get_college_settings()
 
     return render_template(
@@ -470,15 +489,24 @@ def student_download_result_pdf():
         return redirect(url_for('student_login'))
 
     try:
+        st_sem = student.semester or 1
+        default_sem = (st_sem - 1) if st_sem > 1 else 1
         try:
-            semester = int(request.args.get('semester', student.semester or 1))
+            semester = int(request.args.get('semester', default_sem))
         except (ValueError, TypeError):
-            semester = student.semester or 1
+            semester = default_sem
 
-        academic_year = request.args.get('academic_year', '2026-27').strip()
+        # Security check: Ongoing semester cannot be downloaded
+        if semester >= st_sem:
+            flash(f"Internal Assessment Result for Semester {semester} has not been declared yet.", "warning")
+            return redirect(url_for('student.student_results', semester=semester))
+
+        from models import InternalMark
+        mark_sample = InternalMark.query.filter_by(student_id=student.id, semester=semester).first()
+        academic_year = mark_sample.academic_year if (mark_sample and mark_sample.academic_year) else request.args.get('academic_year', '2026-27').strip()
 
         from services.result_declaration_service import is_result_declared
-        if not is_result_declared(academic_year, semester, student.division):
+        if not is_result_declared(academic_year, semester, student.division) and not mark_sample:
             flash(f"Internal Assessment Result for Semester {semester} ({academic_year}) has not been declared by administration yet.", "warning")
             return redirect(url_for('student.student_results', semester=semester, academic_year=academic_year))
 

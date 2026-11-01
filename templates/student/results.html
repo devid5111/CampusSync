@@ -268,10 +268,14 @@
                                 {% for sem in available_semesters %}
                                     {% set is_active = (sem == selected_sem) %}
                                     {% set has_marks = (sem in semesters_with_marks) %}
-                                    <a href="{{ url_for('student_results', academic_year=selected_year, semester=sem) }}"
+                                    <a href="{{ url_for('student_results', semester=sem) }}"
                                        class="sem-pill-btn {% if is_active %}active{% endif %}">
                                         <span>Sem {{ sem }}</span>
-                                        {% if has_marks %}
+                                        {% if sem == student.semester %}
+                                            <span class="badge rounded-pill {% if is_active %}bg-light text-warning{% else %}bg-warning-subtle text-warning border border-warning-subtle{% endif %}" style="font-size: 0.65rem;">
+                                                Current
+                                            </span>
+                                        {% elif has_marks %}
                                             <span class="badge rounded-pill {% if is_active %}bg-light text-primary{% else %}bg-success text-white{% endif %}">
                                                 <i class="bi bi-check2"></i>
                                             </span>
@@ -403,12 +407,14 @@
                                             </div>
                                         </div>
 
+                                        {% if is_result_declared and is_eval %}
                                         <a href="{{ url_for('student.student_download_result_pdf', semester=selected_sem, academic_year=selected_year) }}" 
                                            class="btn btn-outline-primary btn-sm fw-semibold shadow-xs d-flex align-items-center gap-1"
                                            title="Download Official Marksheet PDF">
                                             <i class="bi bi-file-earmark-arrow-down"></i>
                                             <span class="d-none d-sm-inline">Download PDF</span>
                                         </a>
+                                        {% endif %}
                                     </div>
                                 </div>
 
