@@ -2104,6 +2104,32 @@ def admin_api_notify_pending():
             if not student:
                 return jsonify({"success": False, "message": "Student not found."}), 404
 
+            # Check if student is already bound - Admin cannot send alert to already-bound student
+            fp = student.device_fingerprint or ''
+            is_already_bound = bool(
+                fp and 
+                not fp.startswith('HW-') and 
+                not fp.startswith('DEV-') and 
+                not fp.startswith('PIN-') and 
+                not getattr(student, 'device_reset_allowed', 0)
+            )
+            if is_already_bound:
+                return jsonify({
+                    "success": False,
+                    "message": f"{student.full_name}'s mobile device is already registered. No reminder can be sent."
+                }), 400
+
+            # Deactivate any previous active device binding reminders for this student (No duplicate cards)
+            from models import Notification
+            try:
+                Notification.query.filter(
+                    Notification.target_student_id == student.id,
+                    Notification.category == 'Device Binding',
+                    Notification.is_active == True
+                ).update({"is_active": False}, synchronize_session=False)
+            except Exception:
+                pass
+
             title = "[Urgent Alert] Device Registration Required for Attendance"
             msg = (
                 f"Dear {student.full_name} (Roll #{student.roll_number}),\n\n"

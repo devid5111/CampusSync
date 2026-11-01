@@ -556,12 +556,31 @@ def get_student_notices(student, category=None):
             return []
 
     filtered = []
+    seen_device_notice = False
     for n in notices:
         try:
-            # 1. Direct Individual Notice: Targeted directly to this student - ALWAYS INCLUDE!
+            is_device_notice = (
+                n.category == 'Device Binding' or 
+                'Device Registration' in (n.title or '') or 
+                'ડિવાઇસ' in (n.title or '') or 
+                'Passkey' in (n.title or '')
+            )
+            # If student's mobile is already bound, NEVER show any device registration reminder!
+            if is_device_notice and is_really_bound:
+                continue
+
+            # 1. Direct Individual Notice: Targeted directly to this student
             if getattr(n, 'target_student_id', None) is not None:
                 if n.target_student_id == student.id:
+                    if is_device_notice:
+                        if seen_device_notice:
+                            continue
+                        seen_device_notice = True
                     filtered.append(n)
+                continue
+
+            # Safety: If a broadcast notice contains another student's name, DO NOT leak it!
+            if is_device_notice and 'Dear ' in (n.message or '') and (student.full_name or '') not in (n.message or ''):
                 continue
 
             # 2. Audience filter: If targeted to Student or All, match enrolled Semester & Division
@@ -577,15 +596,11 @@ def get_student_notices(student, category=None):
                 if n.subject and n.subject.semester is not None and n.subject.semester != sem:
                     continue
 
-            # 4. Device Binding Bulk Alert Filter:
-            is_device_notice = (
-                n.category == 'Device Binding' or 
-                'Device Registration' in (n.title or '') or 
-                'ડિવાઇસ' in (n.title or '') or 
-                'Passkey' in (n.title or '')
-            )
-            if is_device_notice and is_really_bound:
-                continue
+            # 4. Device Binding Bulk Alert Filter (only 1 device reminder banner on dashboard):
+            if is_device_notice:
+                if seen_device_notice:
+                    continue
+                seen_device_notice = True
 
             filtered.append(n)
         except Exception:

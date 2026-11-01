@@ -1017,6 +1017,17 @@ def student_webauthn_register():
     student.device_model = device_name or "Mobile Device"
     student.device_bound_at = datetime.utcnow()
     student.device_reset_allowed = 0
+
+    # Auto-dismiss / deactivate all Device Binding notifications for this student
+    from models import Notification
+    try:
+        Notification.query.filter(
+            Notification.target_student_id == student.id,
+            Notification.category == 'Device Binding'
+        ).update({"is_active": False}, synchronize_session=False)
+    except Exception:
+        pass
+
     db.session.commit()
 
     return jsonify({
